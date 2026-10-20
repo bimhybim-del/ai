@@ -1,0 +1,79 @@
+# Target Container Environment
+# Collected 2026-10-21 from inside PostgreSQL container
+
+## Kernel
+Linux version 6.8.0-90-generic (buildd@lcy02-amd64-092) (x86_64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #91-Ubuntu SMP PREEMPT_DYNAMIC Tue Nov 18 14:14:30 UTC 2025
+
+## Container
+Hostname: 0349981ed320
+OS: Alpine Linux 3.23.4
+Uptime: 287 days
+
+## Process Status
+Pid: varies
+PPid: varies
+Uid: 70:70:70:70
+CapInh: 0000000000000000
+CapPrm: 0000000000000000
+CapEff: 0000000000000000
+CapBnd: 00000000a80425fb
+CapAmb: 0000000000000000
+Seccomp: 2
+Seccomp_filters: 1
+
+## CapBnd Decoded (bounding set — max caps a child can gain)
+bit 0:  CAP_CHOWN
+bit 1:  CAP_DAC_OVERRIDE
+bit 3:  CAP_FOWNER
+bit 4:  CAP_FSETID
+bit 5:  CAP_KILL
+bit 6:  CAP_SETGID
+bit 7:  CAP_SETUID
+bit 8:  CAP_SETPCAP
+bit 10: CAP_NET_BIND_SERVICE
+bit 13: CAP_NET_RAW
+bit 18: CAP_SYS_CHROOT
+bit 27: CAP_MKNOD
+bit 29: CAP_AUDIT_WRITE
+bit 31: CAP_SETFCAP
+
+## AppArmor
+docker-default (enforce)
+
+## CPU / Memory
+CPUs online: 48 (nproc returns 24 from inside container)
+MemTotal: 395596032 kB (377 GB)
+
+## SLUB Parameters (calculated for 48 CPUs)
+skbuff_head_cache: order=1, objs_per_slab=32, object_size=256
+kmalloc-96: order=0 (estimated), struct unix_vertex=72 bytes fits here
+cpu_partial: 30
+
+## Kernel Boot Cmdline
+BOOT_IMAGE=/boot/vmlinuz-6.8.0-90-generic root=UUID=79d10f9f-6974-41f4-8df7-cb835b92e251
+
+## Storage
+4 NVMe drives (nvme0-3), md127 RAID array
+overlay filesystem (Docker), 878GB total, 97% used
+
+## BTF
+/sys/kernel/btf/vmlinux: 6086091 bytes, readable by non-root
+
+## /proc/kallsyms
+Readable but kptr_restrict active (all addresses show as 0x0000000000000000)
+
+## Available Tools in Container
+wget: /usr/bin/wget
+unshare: /usr/bin/unshare (but CLONE_NEWUSER blocked by seccomp)
+su: /bin/su -> /bin/busybox (symlink)
+socat: /tmp/socat (uploaded previously)
+chisel: /tmp/chisel (uploaded previously)
+gs-netcat: /tmp/gs-netcat (uploaded previously)
+apk: /sbin/apk (but needs root to install packages)
+NO: python3, gcc, perl, ruby, node
+
+## Network
+Container IP: 172.19.0.2 (Docker bridge)
+Outbound IP: 64.130.44.107
+DNS: 127.0.0.11 (Docker internal)
+Outbound HTTPS: WORKS (can wget from internet)
