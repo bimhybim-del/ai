@@ -1,0 +1,32 @@
+name: Proxy Request
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Target URL'
+        required: true
+      method:
+        description: 'HTTP method'
+        default: 'GET'
+      body:
+        description: 'Request body (for POST)'
+        default: ''
+
+jobs:
+  proxy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute request
+        run: |
+          if [ "${{ github.event.inputs.method }}" = "POST" ]; then
+            curl -gsk "${{ github.event.inputs.url }}" \
+              -X POST \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/json" \
+              -d '${{ github.event.inputs.body }}' \
+              -w "\nHTTP_STATUS:%{http_code}" 2>/dev/null
+          else
+            curl -gsk "${{ github.event.inputs.url }}" \
+              -H "Accept: application/json" \
+              -w "\nHTTP_STATUS:%{http_code}" 2>/dev/null
+          fi
