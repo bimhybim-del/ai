@@ -1,4 +1,3 @@
-Could not chdir to home directory /nonexistent: No such file or directory
 #!/usr/bin/env python3
 from __future__ import annotations
 
