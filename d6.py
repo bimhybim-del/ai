@@ -980,7 +980,7 @@ def require_unprivileged_user() -> None:
 
 def setup() -> None:
     require_unprivileged_user()
-    for command in ("openssl", "ip", "tc", "unshare", "nsenter", "su"):
+    for command in ("openssl", "unshare", "nsenter", "su"):
         require_command(command)
 
 
@@ -1127,6 +1127,7 @@ def run_attempts(
 
 def main() -> int:
     breaker("BEGINNING SETUP")
+    import os; os.environ["PATH"] = "/tmp:" + os.environ.get("PATH","")
     setup()
     record = select_kernel_record()
     pin_process_tree(record.affinity_cpu)
