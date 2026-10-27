@@ -157,26 +157,28 @@ def xfrm_state(a):
         elif a[i]=='spi': p['spi']=int(a[i+1],0); i+=1
         elif a[i]=='reqid': p['reqid']=int(a[i+1],0); i+=1
         elif a[i]=='mode': p['mode']=a[i+1]; i+=1
-        elif a[i]=='auth-trunc': p['alg']=a[i+1]; p['key']=a[i+2]; p['trunc']=int(a[i+3]); i+=3
+        elif a[i]=='auth-trunc': p['alg']=a[i+1].replace("'",""); p['key']=a[i+2]; p['trunc']=int(a[i+3]); i+=3
         i+=1
-    # Build xfrm_usersa_info
-    sa = socket.inet_pton(AF_INET6, p['dst'])  # id.daddr
-    sa += struct.pack('I', p['spi'])  # id.spi
-    sa += struct.pack('H', 51 if p['proto']=='ah' else 50)  # id.proto (AH=51, ESP=50)
-    sa += b'\x00' * 2  # pad
-    sa += socket.inet_pton(AF_INET6, p['src'])  # saddr
-    # lft (xfrm_lifetime_cfg) = 64 bytes all max
-    sa += struct.pack('QQQQQQQQ', 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0, 0, 0, 0)
-    # curlft = 32 bytes zeros
-    sa += b'\x00' * 32
-    # stats = 12 bytes zeros
-    sa += b'\x00' * 12
-    # seq, reqid
-    sa += struct.pack('II', 0, p['reqid'])
-    # family, mode, replay_window, flags
-    sa += struct.pack('BBBB', AF_INET6, 0 if p['mode']=='transport' else 1, 0, 0)
-    # pad
-    sa += b'\x00' * 4
+    proto_num = 51 if p.get('proto')=='ah' else 50
+    mode_num = 0 if p.get('mode')=='transport' else 1
+    # xfrm_usersa_info (224 bytes):
+    # selector (56 bytes) - zeroed for wildcard
+    sel = b'\x00' * 56
+    # id: daddr(16) + spi(4) + proto(2) + pad(2) = 24
+    sa_id = socket.inet_pton(AF_INET6, p['dst']) + struct.pack('!I', p['spi']) + struct.pack('H', proto_num) + b'\x00' * 2
+    # saddr (16)
+    saddr = socket.inet_pton(AF_INET6, p['src'])
+    # lft_cfg (64) - all max
+    lft = struct.pack('8Q', *([0xFFFFFFFFFFFFFFFF]*4 + [0]*4))
+    # curlft (32) - zeros
+    curlft = b'\x00' * 32
+    # stats (12) - zeros
+    stats = b'\x00' * 12
+    # seq(4) + reqid(4)
+    seq_reqid = struct.pack('II', 0, p['reqid'])
+    # family(2) + mode(1) + replay(1) + flags(1) + pad(7) = 12
+    tail = struct.pack('HBBBB', AF_INET6, mode_num, 0, 0, 0) + b'\x00' * 7
+    sa = sel + sa_id + saddr + lft + curlft + stats + seq_reqid + tail
     # attrs: XFRMA_ALG_AUTH_TRUNC
     key_bytes = bytes.fromhex(p['key'].replace('0x',''))
     alg_name = p['alg'].replace("'","").encode().ljust(64, b'\x00')
@@ -249,3 +251,4 @@ def main():
     return subprocess.run(['/tmp/busybox','ip']+a).returncode
 
 if __name__=='__main__': sys.exit(main() or 0)
+# fixed xfrm 1793100950
