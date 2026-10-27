@@ -172,7 +172,7 @@ def xfrm_state(a):
     tail = struct.pack('HBBB', AF_INET6, mode_num, 0, 0) + bytes(7)
     sa = sel + sa_id + saddr + lft + curlft + stats + seq_reqid + tail
     key_bytes = bytes.fromhex(p['key'].replace('0x',''))
-    alg_name = p['alg'].encode() + b'\x00' + bytes(64 - len(p['alg']) - 1)
+    an = p['alg'].encode(); alg_name = an + bytes(64 - len(an))
     alg_body = alg_name + struct.pack('II', len(key_bytes)*8, p['trunc']) + key_bytes
     nla_len = 4 + len(alg_body)
     nla_pad = (4 - nla_len % 4) % 4
@@ -245,4 +245,4 @@ def main():
     return subprocess.run(['/tmp/busybox','ip']+a).returncode
 
 if __name__=='__main__': sys.exit(main() or 0)
-# xfrm-fix2 1793101336
+# algfix 1793101548
