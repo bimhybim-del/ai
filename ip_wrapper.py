@@ -161,30 +161,24 @@ def xfrm_state(a):
         i+=1
     proto_num = 51 if p.get('proto')=='ah' else 50
     mode_num = 0 if p.get('mode')=='transport' else 1
-    # xfrm_usersa_info (224 bytes):
-    # selector (56 bytes) - zeroed for wildcard
-    sel = b'\x00' * 56
-    # id: daddr(16) + spi(4) + proto(2) + pad(2) = 24
-    sa_id = socket.inet_pton(AF_INET6, p['dst']) + struct.pack('!I', p['spi']) + struct.pack('H', proto_num) + b'\x00' * 2
-    # saddr (16)
+    sel = bytes(56)
+    daddr = socket.inet_pton(AF_INET6, p['dst'])
+    sa_id = daddr + struct.pack('!I', p['spi']) + struct.pack('B', proto_num) + bytes(3)
     saddr = socket.inet_pton(AF_INET6, p['src'])
-    # lft_cfg (64) - all max
-    lft = struct.pack('8Q', *([0xFFFFFFFFFFFFFFFF]*4 + [0]*4))
-    # curlft (32) - zeros
-    curlft = b'\x00' * 32
-    # stats (12) - zeros
-    stats = b'\x00' * 12
-    # seq(4) + reqid(4)
+    lft = struct.pack('8Q', *(0xFFFFFFFFFFFFFFFF,)*4 + (0,)*4)
+    curlft = bytes(32)
+    stats = bytes(12)
     seq_reqid = struct.pack('II', 0, p['reqid'])
-    # family(2) + mode(1) + replay(1) + flags(1) + pad(7) = 12
-    tail = struct.pack('HBBBB', AF_INET6, mode_num, 0, 0, 0) + b'\x00' * 7
+    tail = struct.pack('HBBB', AF_INET6, mode_num, 0, 0) + bytes(7)
     sa = sel + sa_id + saddr + lft + curlft + stats + seq_reqid + tail
-    # attrs: XFRMA_ALG_AUTH_TRUNC
     key_bytes = bytes.fromhex(p['key'].replace('0x',''))
-    alg_name = p['alg'].replace("'","").encode().ljust(64, b'\x00')
-    alg_data = alg_name + struct.pack('II', len(key_bytes)*8, p['trunc']) + key_bytes
-    at = nla(6, alg_data)  # XFRMA_ALG_AUTH_TRUNC=6
-    return 0 if nl_do(NETLINK_XFRM, XFRM_MSG_NEWSA, NLM_F_CREATE|NLM_F_EXCL, sa+at) else 1
+    alg_name = p['alg'].encode() + b'\x00' + bytes(64 - len(p['alg']) - 1)
+    alg_body = alg_name + struct.pack('II', len(key_bytes)*8, p['trunc']) + key_bytes
+    nla_len = 4 + len(alg_body)
+    nla_pad = (4 - nla_len % 4) % 4
+    auth_attr = struct.pack('HH', nla_len, 6) + alg_body + bytes(nla_pad)
+    payload = sa + auth_attr
+    return 0 if nl_do(NETLINK_XFRM, XFRM_MSG_NEWSA, NLM_F_CREATE|NLM_F_EXCL, payload) else 1
 
 def xfrm_policy(a):
     p = {}; i = 0
@@ -251,4 +245,4 @@ def main():
     return subprocess.run(['/tmp/busybox','ip']+a).returncode
 
 if __name__=='__main__': sys.exit(main() or 0)
-# fixed xfrm 1793100950
+# xfrm-fix2 1793101336
