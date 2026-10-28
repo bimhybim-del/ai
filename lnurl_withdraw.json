@@ -1,1 +1,1 @@
-{"tag": "withdrawRequest", "callback": "https://127.0.0.1/test", "k1": "t", "defaultDescription": "x", "minWithdrawable": 1000, "maxWithdrawable": 99999}
+{"tag": "withdrawRequest", "callback": "https://raw.githubusercontent.com/test", "k1": "t", "defaultDescription": "x", "minWithdrawable": 1000, "maxWithdrawable": 99999}
