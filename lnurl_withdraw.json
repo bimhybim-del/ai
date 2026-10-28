@@ -1,1 +1,1 @@
-{"tag": "withdrawRequest", "callback": "https://google.com/test", "k1": "t", "defaultDescription": "x", "minWithdrawable": 1000, "maxWithdrawable": 99999}
+{"status":"ERROR","reason":"LEAK_TEST_SSRF_CHAIN_ACTIVE"}
