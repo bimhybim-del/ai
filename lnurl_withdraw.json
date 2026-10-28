@@ -1,1 +1,1 @@
-{"tag": "withdrawRequest", "callback": "https://test.slicksparks.ky/test", "k1": "t", "defaultDescription": "x", "minWithdrawable": 1000, "maxWithdrawable": 99999}
+{"tag": "withdrawRequest", "callback": "https://154.38.167.152/test", "k1": "t", "defaultDescription": "x", "minWithdrawable": 1000, "maxWithdrawable": 99999}
