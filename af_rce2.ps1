@@ -98,7 +98,7 @@ Write-Host (AF-Get "/api/v1/connections/confins_r3_asset")
 
 # Step 5: Get kubernetes_default (we created this earlier)
 Write-Host "`n=== kubernetes_default DETAIL ==="
-Write-Host (AF-Get "/api/v1/connections/kubernetes_default"))
+Write-Host (AF-Get "/api/v1/connections/kubernetes_default")
 
 # Step 6: Get airflow metadata DB connection (if exposed as connection)  
 Write-Host "`n=== airflow_db DETAIL ==="
