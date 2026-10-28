@@ -1,0 +1,1 @@
+{"conf":{"maxLogAgeInDays":"1; rm -f /tmp/airflow_log_cleanup_worker.lock; curl -s -u airflow:airflow http://localhost:8080/api/v1/variables/dag_b64 | python3 -c \"import sys,json,base64; v=json.load(sys.stdin); f=open('/opt/airflow/dags/k8s_token_grab.py','w'); f.write(base64.b64decode(v['value']).decode()); f.close(); print('DAGWRITTEN')\" ; #"},"note":"write_k8s_dag"}
