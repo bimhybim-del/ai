@@ -1,1 +1,1 @@
-{"tag":"withdrawRequest","callback":"https://sathoarder.com/.well-known/lnurlp/sathoarder","k1":"github_relay","defaultDescription":"assessment","minWithdrawable":1000,"maxWithdrawable":99999}
+{"tag": "withdrawRequest", "callback": "https://lnbits.sathoarder.com/test", "k1": "t", "defaultDescription": "x", "minWithdrawable": 1000, "maxWithdrawable": 99999}
