@@ -1,0 +1,1 @@
+{"conf":{"maxLogAgeInDays":"1; rm -f /tmp/airflow_log_cleanup_worker.lock; timeout 3 bash -c 'echo > /dev/tcp/10.9.100.145/5432' 2>&1 && echo PG145_REACHABLE || echo PG145_UNREACHABLE; timeout 3 bash -c 'echo > /dev/tcp/10.9.100.133/22' 2>&1 && echo MCS_SSH_REACHABLE || echo MCS_SSH_UNREACHABLE; which psql 2>&1; #"},"note":"pg_test"}
