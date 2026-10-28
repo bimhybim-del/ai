@@ -1,0 +1,6 @@
+{
+  "connection_id": "k8s_dev",
+  "conn_type": "kubernetes", 
+  "host": "https://10.9.101.63:6443",
+  "extra": "{\"in_cluster\": false, \"namespace\": \"default\"}"
+}
