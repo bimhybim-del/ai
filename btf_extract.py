@@ -9,7 +9,7 @@ def gs(o):
     return str_data[o:e].decode()
 pos = 0
 types = [None]
-while pos < len(type_data):
+while pos + 12 <= len(type_data):
     no, info, st = struct.unpack_from("<III", type_data, pos)
     k = (info >> 24) & 0x1f
     v = info & 0xffff
