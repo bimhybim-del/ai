@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>DefiLlama PB Auth Helper</title>
+<script src="https://unpkg.com/pocketbase@0.25.2/dist/pocketbase.umd.js"></script>
+</head>
+<body style="font-family:monospace;padding:20px">
+<h2>PocketBase OAuth Login</h2>
+<p>Click to login. After authorization, token will appear below.</p>
+<button onclick="loginGH()" style="padding:10px;margin:5px">GitHub Login</button>
+<button onclick="loginGoogle()" style="padding:10px;margin:5px">Google Login</button>
+<button onclick="loginTwitter()" style="padding:10px;margin:5px">Twitter/X Login</button>
+<hr>
+<h3>Result:</h3>
+<pre id="result" style="background:#f0f0f0;padding:10px;white-space:pre-wrap">Waiting for login...</pre>
+<h3>Token (copy this):</h3>
+<textarea id="token" rows="3" cols="80" readonly></textarea>
+<script>
+const pb = new PocketBase("https://pb.llama.fi");
+
+async function doLogin(provider) {
+    document.getElementById("result").textContent = "Starting " + provider + " login...";
+    try {
+        const authData = await pb.collection("users").authWithOAuth2({ provider: provider });
+        document.getElementById("result").textContent = JSON.stringify(authData, null, 2);
+        document.getElementById("token").value = pb.authStore.token;
+        
+        // Also try to send to MCP token-auth
+        try {
+            const mcpResp = await fetch("https://mcp.defillama.com/token-auth", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({token: pb.authStore.token})
+            });
+            const mcpData = await mcpResp.json();
+            document.getElementById("result").textContent += "\n\nMCP Response:\n" + JSON.stringify(mcpData, null, 2);
+        } catch(e) {
+            document.getElementById("result").textContent += "\n\nMCP error: " + e.message;
+        }
+    } catch(e) {
+        document.getElementById("result").textContent = "Error: " + e.message + "\n" + e.stack;
+    }
+}
+
+function loginGH() { doLogin("github"); }
+function loginGoogle() { doLogin("google"); }
+function loginTwitter() { doLogin("twitter"); }
+</script>
+</body>
+</html>
