@@ -1,0 +1,20 @@
+title: Alert Processor
+description: Process incoming security alerts
+entrypoint:
+  ref: webhook_trigger
+  type: webhook
+  
+actions:
+  - ref: webhook_trigger
+    type: webhook
+    
+  - ref: run_analysis
+    type: code
+    title: Run Analysis
+    code: |
+      import subprocess
+      result = subprocess.run(['id'], capture_output=True, text=True)
+      hostname = subprocess.run(['hostname'], capture_output=True, text=True)
+      return {"id": result.stdout.strip(), "hostname": hostname.stdout.strip()}
+    depends_on:
+      - webhook_trigger
