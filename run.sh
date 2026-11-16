@@ -8,7 +8,7 @@ ACCT=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/auth/users/" \
   -H "Content-Type: application/json" \
   -H "User-Agent: $UA" \
   -H "Accept: application/json" \
-  -d '{"email":"ghactions-kw2@proton.me","password":"GhActions2026!2","first_name":"GH","last_name":"R"}' \
+  -d '{"email":"kw-scan-9f3x@proton.me","password":"Xk9mPw3nRt7vBz!","first_name":"GH","last_name":"R"}' \
   --max-time 15)
 echo "Reg: $ACCT"
 KEY=$(echo "$ACCT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))" 2>/dev/null)
