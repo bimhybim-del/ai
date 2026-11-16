@@ -1,0 +1,69 @@
+name: Alibaba OIDC Test
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get OIDC Token
+        id: oidc
+        run: |
+          OIDC_TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.aliyuncs.com" | jq -r '.value')
+          echo "::add-mask::$OIDC_TOKEN"
+          echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
+
+      - name: AssumeRoleWithOIDC
+        env:
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: |
+          pip install requests -q
+          python3 -c "
+          import requests,json,os,hmac,hashlib,base64,time,uuid,urllib.parse
+          import urllib3; urllib3.disable_warnings()
+
+          token = os.environ['OIDC_TOKEN']
+
+          params = {
+            'Format': 'JSON',
+            'Action': 'AssumeRoleWithOIDC',
+            'Version': '2015-04-01',
+            'Timestamp': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            'SignatureMethod': 'HMAC-SHA1',
+            'SignatureVersion': '1.0',
+            'SignatureNonce': str(uuid.uuid4()),
+            'OIDCProviderArn': 'acs:ram::1831813856339162:oidc-provider/github-actions-oidc',
+            'RoleArn': 'acs:ram::1831813856339162:role/githubactionscicdrole',
+            'OIDCToken': token,
+            'RoleSessionName': 'github-actions',
+            'DurationSeconds': '3600'
+          }
+
+          r = requests.post('https://sts.aliyuncs.com/', data=params, timeout=30, verify=False)
+          d = r.json()
+
+          if 'Credentials' in d:
+            c = d['Credentials']
+            print(f'SUCCESS! STS AK: {c[\"AccessKeyId\"][:20]}...')
+            print(f'Expires: {c[\"Expiration\"]}')
+
+            # Test admin
+            AK, SK, ST = c['AccessKeyId'], c['AccessKeySecret'], c['SecurityToken']
+            def sign(p,s):
+              q=urllib.parse.urlencode(sorted(p.items()),quote_via=urllib.parse.quote)
+              return base64.b64encode(hmac.new((s+'&').encode(),('GET&%2F&'+urllib.parse.quote(q,safe='')).encode(),hashlib.sha1).digest()).decode()
+            p2={'Format':'JSON','AccessKeyId':AK,'SignatureMethod':'HMAC-SHA1','Timestamp':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'SignatureVersion':'1.0','SignatureNonce':str(uuid.uuid4()),'Action':'ListUsers','Version':'2015-05-01','SecurityToken':ST}
+            p2['Signature']=sign(p2,SK)
+            d2=requests.get('https://ram.aliyuncs.com/',params=p2,timeout=15,verify=False).json()
+            if 'Users' in d2:
+              print(f'Admin: YES ({len(d2[\"Users\"][\"User\"])} users)')
+            else:
+              print(f'Admin: {d2.get(\"Code\",\"?\")}: {d2.get(\"Message\",\"?\")[:80]}')
+          else:
+            print(f'FAILED: {d.get(\"Code\",\"?\")}: {d.get(\"Message\",\"?\")}')
+          "
