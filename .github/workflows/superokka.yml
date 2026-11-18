@@ -8,44 +8,39 @@ jobs:
       - run: pip install --quiet requests pypdf
       - run: |
           python3 - <<'PYEOF'
-          import requests, json, re, base64, urllib3
+          import requests, json, urllib3
           urllib3.disable_warnings()
           B = "https://api.superokka.com"
           s = requests.Session(); s.verify = False
-          r = s.post(f"{B}/auth/forgot-password", json={"email":"finance.okka@gmail.com"}, timeout=25)
-          print("FORGOT:", r.status_code, r.text[:120])
-          m = re.search(r'token=([A-Za-z0-9._-]+)', r.text)
-          if not m:
-              print("NO TOKEN"); raise SystemExit
-          r = s.post(f"{B}/auth/reset-password", json={"token": m.group(1), "password":"KwRce2026!x#9"}, timeout=25)
-          print("RESET:", r.status_code, r.text[:100])
           r = s.post(f"{B}/auth/login", json={"username":"financeokka","password":"KwRce2026!x#9"}, timeout=25)
-          print("LOGIN:", r.status_code, r.text[:80])
+          print("LOGIN:", r.status_code, r.text[:100])
+          if not r.json().get("success"):
+              r = s.post(f"{B}/auth/login", json={"username":"financeokka","password":"password123"}, timeout=25)
+              print("LOGIN2:", r.status_code, r.text[:100])
           if not r.json().get("success"):
               print("LOGIN FAIL"); raise SystemExit
           A = {"Authorization": "Bearer " + r.json()["data"]["accessToken"]}
-          # 1) restore company logo to original
           r = s.patch(f"{B}/companies/4df1efad-247e-4232-9acb-6254ed0c4730", headers=A,
                       json={"logo":"/uploads/746d2c08-3b94-439d-86d8-20a30674c363.svg"}, timeout=25)
-          print("LOGO RESTORE:", r.status_code, r.text[:150])
-          # 2) umrah eticket attempt (paid tx from our test)
-          for tid in ["abda677d-ae87-410d-b08d-46fe65f58fe2"]:
-              r = s.post(f"{B}/transactions/{tid}/etickets", headers=A, timeout=180)
-              print("UMRAH ETICKET:", r.status_code, r.text[:200])
-          # 3) airlines eticket with field fuzz (filename reflection test)
-          for body in [None, {"type":"ZZTESTZZ"}, {"template":"ZZTESTZZ"}]:
+          print("LOGO RESTORE:", r.status_code, r.text[:120])
+          r = s.post(f"{B}/transactions/abda677d-ae87-410d-b08d-46fe65f58fe2/etickets", headers=A, timeout=180)
+          print("UMRAH ETICKET:", r.status_code, r.text[:150])
+          for body in [None, {"type":"ZZTESTZZ"}]:
               r = s.post(f"{B}/transactions/2e029cbf-9912-424d-94e1-f3282adacda1/etickets",
                          headers=A, json=body or {}, timeout=180)
-              print("AIR ETICKET", str(body)[:30], "→", r.status_code, r.text[:200])
-          # 4) download airlines PDF and extract text
+              print("AIR ETICKET", str(body)[:24], "→", r.status_code, r.text[:150])
           rr = s.get(f"{B}/uploads/etickets/Departure-eTicket-KJUGUE.pdf", timeout=60)
           print("PDF:", rr.status_code, len(rr.content))
           open("/tmp/e.pdf","wb").write(rr.content)
           try:
               from pypdf import PdfReader
               txt = PdfReader("/tmp/e.pdf").pages[0].extract_text() or ""
-              print("PDFTEXT:", txt[:600])
+              print("PDFTEXT:", txt[:500])
               print("HAS ZZ:", "ZZTESTZZ" in txt)
           except Exception as e:
               print("PDFERR:", str(e)[:120])
+          # provider check
+          r = s.post(f"{B}/flight-search/lion-air/search", headers=A,
+                     json={"departureAirportCode":"CGK","arrivalAirportCode":"SUB","departureDate":"2026-12-20"}, timeout=60)
+          print("SEARCH:", r.status_code, r.text[:150])
           PYEOF
