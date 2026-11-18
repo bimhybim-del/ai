@@ -12,10 +12,10 @@ jobs:
           urllib3.disable_warnings()
           B = "https://api.superokka.com"
           s = requests.Session(); s.verify = False
-          r = s.post(f"{B}/auth/login", json={"username":"financeokka","password":"KwRce2026!x#9"}, timeout=25)
+          r = s.post(f"{B}/auth/login", json={"username":"financeokka","password":"KwRce2026!x#9","force":true}, timeout=25)
           print("LOGIN:", r.status_code, r.text[:100])
           if not r.json().get("success"):
-              r = s.post(f"{B}/auth/login", json={"username":"financeokka","password":"password123"}, timeout=25)
+              r = s.post(f"{B}/auth/login", json={"username":"financeokka","password":"password123","force":true}, timeout=25)
               print("LOGIN2:", r.status_code, r.text[:100])
           if not r.json().get("success"):
               print("LOGIN FAIL"); raise SystemExit
