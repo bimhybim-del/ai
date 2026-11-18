@@ -1,0 +1,22 @@
+name: internal-probe
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+          echo "=== RUNNER IP ==="
+          curl -s --max-time 10 https://api.ipify.org; echo
+          for H in gitlab-engineering.koinworks.com bo.koinworks.com filetransfer-data.koinworks.com tools.koinworks.com api-docs.koinworks.com backoffice.koinworks.com dbgui.koinworks.com; do
+            for P in "/" "/users/sign_in" "/api/v4/" "/api/v4/projects" "/health" "/login"; do
+              R=$(curl -sk -m 15 -o /tmp/body.txt -w "%{http_code} %{size_download} %{content_type}" "https://$H$P" -H "User-Agent: $UA" 2>/dev/null)
+              B=$(head -c 100 /tmp/body.txt | tr -d '\n' | tr -s ' ')
+              echo "$H$P → $R | $B"
+            done
+          done
+          echo "=== SuperOkka prod check ==="
+          R=$(curl -sk -m 15 -o /tmp/body.txt -w "%{http_code}" "https://api.superokka.com/" -H "User-Agent: $UA" 2>/dev/null)
+          B=$(head -c 120 /tmp/body.txt | tr -d '\n')
+          echo "api.superokka.com → $R | $B"
