@@ -1,0 +1,71 @@
+name: prod-verify
+on:
+  workflow_dispatch:
+    inputs:
+      otp:
+        description: 'OTP code'
+        required: true
+        default: '978081'
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      OTP_CODE: ${{ github.event.inputs.otp }}
+    steps:
+      - run: pip install --quiet requests
+      - run: |
+          python3 - <<'PYEOF'
+          import requests, json, urllib3, os
+          urllib3.disable_warnings()
+          B = "https://api.superokka.com"
+          s = requests.Session(); s.verify = False
+          OTP = os.environ.get("OTP_CODE","978081")
+
+          print(f"=== VERIFY OTP {OTP} ===")
+          r = s.post(f"{B}/auth/otp/verify", json={"email":"superxfilecom@gmail.com","otp":OTP}, timeout=20)
+          print(f"STATUS: {r.status_code}")
+          print(f"BODY: {r.text[:800]}")
+
+          d = r.json()
+          tok = d.get("data",{}).get("accessToken","")
+          if tok:
+              print(f"\n=== GOT PRODUCTION TOKEN ===")
+              print(f"TOKEN: {tok[:60]}...")
+              H = {"Authorization": f"Bearer {tok}"}
+
+              # Profile
+              r = s.get(f"{B}/auth/profile", headers=H, timeout=15)
+              print(f"\nPROFILE: {r.text[:500]}")
+
+              # Users list (check permissions)
+              r = s.get(f"{B}/users?limit=5", headers=H, timeout=15)
+              print(f"\nUSERS: {r.text[:400]}")
+
+              # Transactions
+              r = s.get(f"{B}/transactions?limit=5", headers=H, timeout=15)
+              print(f"\nTRANSACTIONS: {r.text[:400]}")
+
+              # Companies
+              r = s.get(f"{B}/companies", headers=H, timeout=15)
+              print(f"\nCOMPANIES: {r.text[:300]}")
+
+              # Upload test
+              import base64
+              png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+              r = s.post(f"{B}/upload/image", headers=H, files={"file": ("test.png", base64.b64decode(png), "image/png")}, timeout=20)
+              print(f"\nUPLOAD: {r.text[:300]}")
+
+              # Try to access etickets on existing transaction
+              r = s.get(f"{B}/transactions?limit=50", headers=H, timeout=15)
+              txs = r.json().get("data",[])
+              for tx in txs[:5]:
+                  tid = tx.get("id")
+                  print(f"\nTX {tid}: type={tx.get('type')} status={tx.get('transactionStatus')}")
+                  r2 = s.post(f"{B}/transactions/{tid}/etickets", headers=H, timeout=120)
+                  print(f"  ETICKET: {r2.status_code} {r2.text[:200]}")
+                  if r2.status_code == 200:
+                      print(f"  ETICKET SUCCESS!")
+                      break
+          else:
+              print("NO TOKEN - OTP failed")
+          PYEOF
