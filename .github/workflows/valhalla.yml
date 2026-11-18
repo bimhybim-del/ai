@@ -1,0 +1,56 @@
+name: valhalla
+on:
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pip install --quiet playwright
+      - run: |
+          python3 - <<'PYEOF'
+          import json, time
+          from playwright.sync_api import sync_playwright
+          CAP = []
+          with sync_playwright() as p:
+              b = p.chromium.launch(channel="chrome", headless=True, args=["--no-sandbox","--disable-gpu","--disable-dev-shm-usage"])
+              pg = b.new_page(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+              def on_req(req):
+                  u = req.url
+                  if "valhalla" in u or "/access" in u or "koinp2p.com/api" in u:
+                      try:
+                          hd = dict(req.headers)
+                      except Exception:
+                          hd = {}
+                      CAP.append({"url": u, "method": req.method, "headers": hd})
+              pg.on("request", on_req)
+              try:
+                  pg.goto("https://app.koinp2p.com/", wait_until="domcontentloaded", timeout=60000)
+              except Exception as e:
+                  print("GOTO ERR", str(e)[:120])
+              pg.wait_for_timeout(9000)
+              try:
+                  for sel in ["input[type=tel]","input[type=text]","input[type=email]","input"]:
+                      try:
+                          pg.fill(sel, "081234567890", timeout=4000)
+                          print("FILLED:", sel)
+                          break
+                      except Exception:
+                          continue
+                  pg.wait_for_timeout(1500)
+                  for bt in pg.query_selector_all("button"):
+                      try:
+                          t = (bt.inner_text() or "").lower()
+                          if any(k in t for k in ["lanjut","next","kirim","masuk","login","submit","oke","otp"]):
+                              bt.click(timeout=4000)
+                              print("CLICKED:", t[:30])
+                              break
+                      except Exception:
+                          continue
+              except Exception as e:
+                  print("INTERACT ERR", str(e)[:120])
+              pg.wait_for_timeout(10000)
+              b.close()
+          print("CAP_COUNT:", len(CAP))
+          for c in CAP:
+              print(json.dumps(c)[:1500])
+          PYEOF
