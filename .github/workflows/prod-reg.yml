@@ -1,0 +1,137 @@
+name: prod-reg
+on:
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pip install --quiet requests
+      - run: |
+          python3 - <<'PYEOF'
+          import requests, json, urllib3, time, imaplib, email as em, re
+          urllib3.disable_warnings()
+          B = "https://api.superokka.com"
+          s = requests.Session(); s.verify = False
+          EMAIL = "superxfilecom@gmail.com"
+          IMAP_PASS = "ojhw apff okyc kecp"
+
+          def get_otp():
+              s.post(f"{B}/auth/otp/request", json={"email": EMAIL}, timeout=20)
+              time.sleep(8)
+              mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
+              mail.login(EMAIL, IMAP_PASS)
+              mail.select('INBOX')
+              status, msgs = mail.search(None, '(FROM "tiketokka" UNSEEN)')
+              ids = msgs[0].split()
+              if not ids:
+                  status, msgs = mail.search(None, 'ALL')
+                  ids = msgs[0].split()
+              for mid in reversed(ids[-3:]):
+                  status, data = mail.fetch(mid, '(RFC822)')
+                  msg = em.message_from_bytes(data[0][1])
+                  body = ""
+                  if msg.is_multipart():
+                      for part in msg.walk():
+                          if part.get_content_type() == 'text/html':
+                              body = part.get_payload(decode=True).decode('utf-8','replace')
+                              break
+                  else:
+                      body = msg.get_payload(decode=True).decode('utf-8','replace')
+                  styled = re.findall(r'font-size:\s*\d+px[^>]*>(\d)', body)
+                  if styled:
+                      otp = ''.join(styled[:6])
+                      mail.close(); mail.logout()
+                      return otp
+              mail.close(); mail.logout()
+              return None
+
+          # Step 1: Get OTP and verify
+          otp = get_otp()
+          print(f"OTP: {otp}")
+          r = s.post(f"{B}/auth/otp/verify", json={"email": EMAIL, "otp": otp}, timeout=20)
+          print(f"VERIFY: {r.status_code} {r.text[:600]}")
+          d = r.json()
+          tok = d.get("data",{}).get("accessToken","")
+          reg_tok = d.get("data",{}).get("registrationToken","")
+
+          if reg_tok and not tok:
+              # Step 2: Complete registration with ONLY accepted fields
+              print(f"\n=== REGISTERING ===")
+              r2 = s.post(f"{B}/auth/otp/complete-registration", json={
+                  "registrationToken": reg_tok,
+                  "username": "superxfile1",
+                  "phone": "081234567890"
+              }, timeout=20)
+              print(f"REG: {r2.status_code} {r2.text[:800]}")
+              d2 = r2.json()
+              tok = d2.get("data",{}).get("accessToken","")
+
+              if not tok:
+                  # Try with just registrationToken and username
+                  r3 = s.post(f"{B}/auth/otp/complete-registration", json={
+                      "registrationToken": reg_tok,
+                      "username": "superxfile1"
+                  }, timeout=20)
+                  print(f"REG2: {r3.status_code} {r3.text[:800]}")
+                  tok = r3.json().get("data",{}).get("accessToken","")
+
+              if not tok:
+                  # Fresh OTP after registration
+                  print("\n=== FRESH LOGIN AFTER REG ===")
+                  otp2 = get_otp()
+                  print(f"OTP2: {otp2}")
+                  r4 = s.post(f"{B}/auth/otp/verify", json={"email": EMAIL, "otp": otp2}, timeout=20)
+                  print(f"VERIFY2: {r4.status_code} {r4.text[:600]}")
+                  tok = r4.json().get("data",{}).get("accessToken","")
+
+          if not tok:
+              print("FAILED TO GET TOKEN"); exit(1)
+
+          print(f"\n=== PRODUCTION TOKEN ===")
+          print(f"TOKEN: {tok}")
+          H = {"Authorization": f"Bearer {tok}"}
+
+          # Enumerate
+          for ep in ["/auth/profile", "/users?limit=5", "/transactions?limit=10",
+                     "/companies", "/roles", "/airlines", "/airline-providers"]:
+              r = s.get(f"{B}{ep}", headers=H, timeout=15)
+              print(f"\n{ep}: {r.status_code} {r.text[:400]}")
+
+          # Try eticket on transactions
+          r = s.get(f"{B}/transactions?limit=50", headers=H, timeout=15)
+          try:
+              txs = r.json().get("data",[])
+              for tx in txs[:10]:
+                  tid = tx.get("id")
+                  ts = tx.get("transactionStatus","")
+                  tt = tx.get("type","")
+                  if ts in ("completed","pending","waiting_payment_method"):
+                      r2 = s.post(f"{B}/transactions/{tid}/etickets", headers=H, json={}, timeout=120)
+                      print(f"\nETICKET {tid} ({tt}/{ts}): {r2.status_code} {r2.text[:300]}")
+                      if r2.status_code in (200,201):
+                          print("!!! ETICKET SUCCESS !!!")
+                          # Download PDF
+                          if r2.headers.get("content-type","").startswith("application/pdf"):
+                              open("/tmp/eticket.pdf","wb").write(r2.content)
+                              print(f"PDF saved: {len(r2.content)} bytes")
+          except Exception as e:
+              print(f"TX error: {e}")
+
+          # Create transaction
+          r = s.post(f"{B}/transactions", headers=H, json={
+              "qty":1,"flightRoundtripId":"b5c2fc13-fb7e-4473-9013-fc799a3f597c"
+          }, timeout=20)
+          print(f"\nCREATE TX: {r.status_code} {r.text[:300]}")
+
+          # Upload
+          import base64
+          png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+          r = s.post(f"{B}/upload/image", headers=H, files={"file": ("t.png", png, "image/png")}, timeout=20)
+          print(f"\nUPLOAD: {r.status_code} {r.text[:300]}")
+
+          # Flight search
+          r = s.post(f"{B}/flight-search/lion-air/search", headers=H, json={
+              "departureAirportCode":"CGK","arrivalAirportCode":"SUB","departureDate":"2026-12-22"
+          }, timeout=60)
+          print(f"\nFLIGHT: {r.status_code} {r.text[:300]}")
+          PYEOF
