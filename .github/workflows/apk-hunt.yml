@@ -1,0 +1,44 @@
+name: apk-hunt
+on:
+  workflow_dispatch:
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet requests
+      - name: Try direct APK mirrors
+        run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+          mkdir -p apk
+          # try apkpure API search for app id
+          curl -s -m 20 "https://api.pureapk.com/m/v3/cms/search?hl=en&keyword=koinworks" -H "User-Agent: APKPure/3.20.0" | head -c 1500 > apk/search.json
+          cat apk/search.json | head -c 800
+          # try apkpure app page to get version + dl link
+          curl -s -m 30 "https://d.apkpure.com/b/APK/com.koinworks.app?version=latest" -H "User-Agent: $UA" -o apk/kw.apk || true
+          ls -la apk/
+          file apk/kw.apk || true
+      - name: Try more mirrors
+        run: |
+          UA="Mozilla/5.0"
+          # apkmonk direct pattern
+          for U in "https://www.apkmonk.com/download-app/com.koinworks.app/latest_com.koinworks.app.apk/" \
+                   "https://download.apkmonk.com/com.koinworks.app.apk" \
+                   "https://androidapksfree.com/download/com.koinworks.app" \
+                   "https://apkdone.com/koinworks/download/" ; do
+            echo "== $U"
+            curl -skL -m 40 -A "$UA" -o apk/try.apk "$U" 2>/dev/null
+            file apk/try.apk | head -1
+            SZ=$(stat -c%s apk/try.apk 2>/dev/null || echo 0)
+            if [ "$SZ" -gt 1000000 ]; then cp apk/try.apk apk/kw2.apk; echo "GOT BIG FILE"; break; fi
+          done
+          ls -la apk/
+      - name: Commit APK if found
+        run: |
+          if [ -f apk/kw2.apk ] || [ -f apk/kw.apk ] && [ $(stat -c%s apk/kw.apk 2>/dev/null || echo 0) -gt 1000000 ]; then
+            git config user.email "dev@bimhybim.io"; git config user.name "dev"
+            git add apk/ && git commit -m "apk" && git push origin main
+            echo APK_PUSHED
+          else
+            echo NO_APK
+          fi
