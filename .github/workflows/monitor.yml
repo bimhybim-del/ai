@@ -42,3 +42,16 @@ jobs:
           curl -s -X POST "https://flagsmith.koinworks.com/api/v1/environments/${EKEY}/webhooks/test/" \
             -H "Authorization: Token $KEY" -H "Content-Type: application/json" -H "User-Agent: $UA" \
             -d '{"url":"https://koinp2p.com/wp-cron.php?doing_wp_cron=1"}' --max-time 25 2>/dev/null | head -c 100
+
+      - run: |
+          # Staging B2B: eticket worker check + SuperOkka prod login check
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+          TOK=$(curl -sk -m 20 -X POST https://staging-api-b2b.tiketokka.id/auth/login -H "Content-Type: application/json" -d '{"username":"admin","password":"password123","force":true}' | python3 -c "import json,sys; print(json.load(sys.stdin).get('data',{}).get('accessToken',''))" 2>/dev/null)
+          if [ -n "$TOK" ]; then
+            R=$(curl -sk -m 90 -X POST "https://staging-api-b2b.tiketokka.id/transactions/b8b625a6-de41-4ba2-ac05-3529366ed7a6/etickets" -H "Authorization: Bearer $TOK" -H "Content-Type: application/json" -d '{}')
+            echo "$(date -u +%H:%M:%S) staging eticket: $(echo "$R" | head -c 150)"
+          else echo "staging login FAILED"; fi
+          R2=$(curl -sk -m 20 -X POST https://api.superokka.com/auth/login -H "Content-Type: application/json" -d '{"username":"financeokka","password":"KwRce2026!x#9","force":true}')
+          echo "$(date -u +%H:%M:%S) prod login: $(echo "$R2" | head -c 120)"
+          R3=$(curl -sk -m 20 -X POST https://api.superokka.com/auth/login -H "Content-Type: application/json" -d '{"username":"financeokka","password":"password123","force":true}')
+          echo "$(date -u +%H:%M:%S) prod login alt: $(echo "$R3" | head -c 120)"
