@@ -11,7 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: pip install --quiet requests pypdf
-      - run: |
+      - env:
+          VTOKEN: ${{ github.event.inputs.vtoken }}
+        run: |
           python3 - <<'PYEOF'
           import requests, json, urllib3, os
           urllib3.disable_warnings()
