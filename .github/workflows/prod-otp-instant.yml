@@ -71,8 +71,62 @@ jobs:
 
           d = r.json()
           tok = d.get("data",{}).get("accessToken","")
+          reg_tok = d.get("data",{}).get("registrationToken","")
+
+          # If requiresRegistration, complete registration first
+          if reg_tok and not tok:
+              print(f"\n=== COMPLETING REGISTRATION (token: {reg_tok[:20]}...) ===")
+              # Complete registration
+              r2 = s.post(f"{B}/auth/otp/complete-registration", json={
+                  "registrationToken": reg_tok,
+                  "username": "superxfile1",
+                  "name": "Super X",
+                  "phone": "081234567890",
+                  "gender": "Male",
+                  "address": "Jl Test 1",
+                  "password": "Test2026!x#9"
+              }, timeout=20)
+              print(f"REGISTER: {r2.status_code} {r2.text[:600]}")
+              d2 = r2.json()
+              tok = d2.get("data",{}).get("accessToken","")
+              if not tok:
+                  # Maybe need to login after registration
+                  r3 = s.post(f"{B}/auth/login", json={
+                      "username":"superxfile1","password":"Test2026!x#9","force":True
+                  }, timeout=15)
+                  print(f"LOGIN AFTER REG: {r3.status_code} {r3.text[:300]}")
+                  tok = r3.json().get("data",{}).get("accessToken","")
+                  if not tok:
+                      # Try OTP again
+                      r4 = s.post(f"{B}/auth/otp/request", json={"email": EMAIL}, timeout=20)
+                      print(f"OTP RE-REQUEST: {r4.text[:200]}")
+                      time.sleep(10)
+                      # Read new OTP
+                      mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
+                      mail.login(EMAIL, IMAP_PASS)
+                      mail.select('INBOX')
+                      status, msgs = mail.search(None, 'ALL')
+                      ids = msgs[0].split()
+                      for mid in reversed(ids[-3:]):
+                          status, data = mail.fetch(mid, '(RFC822)')
+                          msg = em.message_from_bytes(data[0][1])
+                          body = ""
+                          if msg.is_multipart():
+                              for part in msg.walk():
+                                  if part.get_content_type() == 'text/html':
+                                      body = part.get_payload(decode=True).decode('utf-8','replace')
+                                      break
+                          styled = re.findall(r'font-size:\s*\d+px[^>]*>(\d)', body)
+                          if styled:
+                              new_otp = ''.join(styled[:6])
+                              r5 = s.post(f"{B}/auth/otp/verify", json={"email": EMAIL, "otp": new_otp}, timeout=20)
+                              print(f"VERIFY2: {r5.status_code} {r5.text[:400]}")
+                              tok = r5.json().get("data",{}).get("accessToken","")
+                              break
+                      mail.close(); mail.logout()
+
           if not tok:
-              print("NO TOKEN")
+              print("NO TOKEN AFTER ALL ATTEMPTS")
               exit(1)
 
           print(f"\n=== PRODUCTION JWT OBTAINED ===")
