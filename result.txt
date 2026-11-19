@@ -1,25 +1,18 @@
 == EGRESS IP ==
-130.131.119.6
+20.189.190.143
 503 /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-cicilan/1.0/cicilan/dashboard => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-portal-loan/1.0/loan/partner/config => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 == PAYUUNG API RETEST (client_credentials) ==
 payuung token: 401 {"status":401,"code":"401","data":null,"message":"Access Denied"}
-== V7: WSO2 CVE-2022-29464 ATTACK ==
-=== HOST: api.bankina.id ===
-FP /carbon/login => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
-FP /carbon/admin/login.jsp => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
-FP /publisher => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
-FP /devportal => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
-UPLOAD [../../../../repository/deployment/server/webapps/authenticat] => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
-UPLOAD [cmd.jsp] => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
-SHELL CHECK => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
-=== HOST: apigw-prod.bankina.id ===
-FP /carbon/login => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
-FP /carbon/admin/login.jsp => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
-FP /publisher => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
-FP /devportal => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
-UPLOAD [../../../../repository/deployment/server/webapps/authenticat] => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
-UPLOAD [cmd.jsp] => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
-SHELL CHECK => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+== V8: AXIS2 ADMIN + SERVICE LIST ==
+listServices: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+ADMIN /axis2-admin/ => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is 
+ADMIN /axis2-admin/login => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is 
+ADMIN /axis2-admin/listServices => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is 
+ADMIN /axis2-web/ => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is 
+AUTH /axis2-admin/ => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+AUTH /axis2-admin/listServices => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+AUTH /services/listServices => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+api.bankina.id listServices: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
