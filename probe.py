@@ -68,3 +68,4 @@ try:
                 print("F12", p, e2.code, e2.read()[:120].decode())
 except urllib.error.HTTPError as e:
     print("MINT FAIL:", e.code, e.read()[:120].decode())
+# retrigger
