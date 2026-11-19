@@ -1,0 +1,20 @@
+name: probe
+on:
+  push:
+    paths:
+      - 'probe.py'
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run probe
+        run: |
+          python3 probe.py | tee result.txt
+      - name: Commit result
+        run: |
+          git config user.email "runner@probe.local"
+          git config user.name "probe-runner"
+          git add result.txt
+          git commit -m "probe result $(date -u +%s)" && git push || echo "no change"
