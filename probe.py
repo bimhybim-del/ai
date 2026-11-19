@@ -49,3 +49,22 @@ except urllib.error.HTTPError as e:
     print("payuung token:", e.code, e.read()[:150].decode())
 except Exception as e:
     print("payuung token ERR:", str(e)[:100])
+
+print("== F-12 ENDPOINT RETEST (kalau token mint sukses) ==")
+try:
+    data = json.dumps({"client_id":"jgHY8WqE1gZwqEifL9axo9Zo4cik9PDT9DyQy80JdZQ=","client_secret":"ySjvffjjAPkB6EvKv6BTZ7Pwq2sV/R8h/V9HD4MFE4M=","grant_type":"client_credentials"}).encode()
+    r = urllib.request.Request("https://api.payuung.com/v2/oauth2/token", data=data, headers={"Content-Type":"application/json"}, method="POST")
+    resp = urllib.request.urlopen(r, timeout=20, context=ctx)
+    tok = json.loads(resp.read().decode())
+    at = tok.get("data",{}).get("access_token","")
+    print("MINT OK:", at[:30])
+    if at:
+        for p in ["/v2/bni_hasanah", "/v2/family/1", "/v2/loan/bills/payment_slips"]:
+            try:
+                r2 = urllib.request.Request("https://api.payuung.com"+p, headers={"Authorization":"Bearer "+at}, method="GET")
+                resp2 = urllib.request.urlopen(r2, timeout=15, context=ctx)
+                print("F12", p, resp2.status, resp2.read()[:150].decode())
+            except urllib.error.HTTPError as e2:
+                print("F12", p, e2.code, e2.read()[:120].decode())
+except urllib.error.HTTPError as e:
+    print("MINT FAIL:", e.code, e.read()[:120].decode())
