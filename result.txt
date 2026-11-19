@@ -1,10 +1,216 @@
 == EGRESS IP ==
-52.161.75.164
+20.29.189.70
 503 /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-cicilan/1.0/cicilan/dashboard => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-portal-loan/1.0/loan/partner/config => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 == PAYUUNG API RETEST (client_credentials) ==
 payuung token: 401 {"status":401,"code":"401","data":null,"message":"Access Denied"}
-== F-12 ENDPOINT RETEST (kalau token mint sukses) ==
-MINT FAIL: 401 {"status":401,"code":"401","data":null,"message":"Access Denied"}
+== FORGE DENGAN PARTNER ID LAIN + PATH LAIN ==
+BLOCK partner=payuung /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=payuung /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=payuung /exp-api-portal-loan/1.0/loan/limits => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+HTTP404 partner=payuung /exp-api-auth/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=payuung /exp-api-bina/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=payuung /exp-api-onboarding/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=payuung /exp-api-user/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=payuung /exp-api-loan/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=payuung /exp-api-master/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=payuung /1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=payuung /docs => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=payuung /swagger.json => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=payuung /v1/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+BLOCK partner=PAYUUNG /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=PAYUUNG /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=PAYUUNG /exp-api-portal-loan/1.0/loan/limits => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+HTTP404 partner=PAYUUNG /exp-api-auth/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=PAYUUNG /exp-api-bina/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=PAYUUNG /exp-api-onboarding/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=PAYUUNG /exp-api-user/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=PAYUUNG /exp-api-loan/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=PAYUUNG /exp-api-master/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=PAYUUNG /1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=PAYUUNG /docs => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=PAYUUNG /swagger.json => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=PAYUUNG /v1/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+BLOCK partner=gadjian /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=gadjian /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=gadjian /exp-api-portal-loan/1.0/loan/limits => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+HTTP404 partner=gadjian /exp-api-auth/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=gadjian /exp-api-bina/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=gadjian /exp-api-onboarding/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=gadjian /exp-api-user/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=gadjian /exp-api-loan/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=gadjian /exp-api-master/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=gadjian /1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=gadjian /docs => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=gadjian /swagger.json => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=gadjian /v1/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+BLOCK partner=GADJIAN /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=GADJIAN /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=GADJIAN /exp-api-portal-loan/1.0/loan/limits => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+HTTP404 partner=GADJIAN /exp-api-auth/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=GADJIAN /exp-api-bina/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=GADJIAN /exp-api-onboarding/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=GADJIAN /exp-api-user/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=GADJIAN /exp-api-loan/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=GADJIAN /exp-api-master/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=GADJIAN /1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=GADJIAN /docs => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=GADJIAN /swagger.json => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=GADJIAN /v1/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+BLOCK partner=fast8 /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=fast8 /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=fast8 /exp-api-portal-loan/1.0/loan/limits => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+HTTP404 partner=fast8 /exp-api-auth/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=fast8 /exp-api-bina/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=fast8 /exp-api-onboarding/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=fast8 /exp-api-user/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=fast8 /exp-api-loan/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=fast8 /exp-api-master/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=fast8 /1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=fast8 /docs => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=fast8 /swagger.json => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=fast8 /v1/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+BLOCK partner=bina /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=bina /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=bina /exp-api-portal-loan/1.0/loan/limits => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+HTTP404 partner=bina /exp-api-auth/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=bina /exp-api-bina/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=bina /exp-api-onboarding/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=bina /exp-api-user/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=bina /exp-api-loan/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=bina /exp-api-master/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=bina /1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=bina /docs => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=bina /swagger.json => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=bina /v1/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+BLOCK partner=1 /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=1 /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=1 /exp-api-portal-loan/1.0/loan/limits => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+HTTP404 partner=1 /exp-api-auth/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=1 /exp-api-bina/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=1 /exp-api-onboarding/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=1 /exp-api-user/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=1 /exp-api-loan/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=1 /exp-api-master/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=1 /1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=1 /docs => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=1 /swagger.json => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=1 /v1/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+BLOCK partner=2 /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=2 /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=2 /exp-api-portal-loan/1.0/loan/limits => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+HTTP404 partner=2 /exp-api-auth/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=2 /exp-api-bina/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=2 /exp-api-onboarding/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=2 /exp-api-user/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=2 /exp-api-loan/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=2 /exp-api-master/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=2 /1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=2 /docs => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=2 /swagger.json => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=2 /v1/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+BLOCK partner=10 /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=10 /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+BLOCK partner=10 /exp-api-portal-loan/1.0/loan/limits => {"code":"700700","type":"API blocked","description":"This API has been blocked t
+HTTP404 partner=10 /exp-api-auth/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=10 /exp-api-bina/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=10 /exp-api-onboarding/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=10 /exp-api-user/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=10 /exp-api-loan/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=10 /exp-api-master/1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=10 /1.0/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=10 /docs => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=10 /swagger.json => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+HTTP404 partner=10 /v1/ => {"code":"404","type":"Status report","message":"Not Found","description":"The re
+>>> NON-BLOCKED RESPONSE: 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
