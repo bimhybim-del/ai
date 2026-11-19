@@ -1,13 +1,28 @@
 == EGRESS IP ==
-20.168.110.179
+52.188.198.110
 503 /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-cicilan/1.0/cicilan/dashboard => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-portal-loan/1.0/loan/partner/config => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-portal-loan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 == PAYUUNG API RETEST (client_credentials) ==
 payuung token: 401 {"status":401,"code":"401","data":null,"message":"Access Denied"}
-== V9: AXIS2 SERVICES + WSDL ==
-SERVICES PAGE: 200 len 400
-LINKS: ['/services/echo?wsdl', '/services/WorkflowCallbackService?wsdl']
-WSDL /services/echo?wsdl => 500 len 217 | <faultstring>The endpoint reference (EPR) for the Operation not found is /servic
-WSDL /services/WorkflowCallbackService?wsdl => 500 len 236 | <faultstring>The endpoint reference (EPR) for the Operation not found is /servic
+== V10: SOAP DISCOVERY + XXE ==
+WFC generic: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns24="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns24:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operation not found is /services/WorkflowCallbackService and the WSA Action = . If this EPR was previously r
+ECHO: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns16="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns16:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operatio
+XXE WFC: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns25="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns25:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operation not found is /services/WorkflowCallbackService and the WSA Action = . If this EPR was previously r
+OP process => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
+OP callback => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
+OP notify => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
+OP handleResponse => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
+OP onEvent => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
+OP update => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
+OP complete => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
+OP receive => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
+OP submit => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
+SVC LoanService => 404 {"code":"404","type":"Status report","message":"Not Found","
+SVC CicilanService => 404 {"code":"404","type":"Status report","message":"Not Found","
+SVC WorkflowService => 404 {"code":"404","type":"Status report","message":"Not Found","
+SVC CallbackService => 404 {"code":"404","type":"Status report","message":"Not Found","
+SVC BinaService => 404 {"code":"404","type":"Status report","message":"Not Found","
+SVC OnboardingService => 404 {"code":"404","type":"Status report","message":"Not Found","
+SVC MasterDataService => 404 {"code":"404","type":"Status report","message":"Not Found","
