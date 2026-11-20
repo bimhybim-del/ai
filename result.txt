@@ -1,5 +1,5 @@
 == EGRESS IP ==
-40.119.37.109
+52.248.45.83
 503 /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-cicilan/1.0/cicilan/dashboard => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-portal-loan/1.0/loan/partner/config => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
@@ -7,9 +7,9 @@
 == PAYUUNG API RETEST (client_credentials) ==
 payuung token: 401 {"status":401,"code":"401","data":null,"message":"Access Denied"}
 == V10: SOAP DISCOVERY + XXE ==
-WFC generic: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns44="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns44:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operation not found is /services/WorkflowCallbackService and the WSA Action = . If this EPR was previously r
-ECHO: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns52="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns52:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operatio
-XXE WFC: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns45="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns45:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operation not found is /services/WorkflowCallbackService and the WSA Action = . If this EPR was previously r
+WFC generic: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns52="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns52:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operation not found is /services/WorkflowCallbackService and the WSA Action = . If this EPR was previously r
+ECHO: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns53="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns53:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operatio
+XXE WFC: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns56="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns56:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operation not found is /services/WorkflowCallbackService and the WSA Action = . If this EPR was previously r
 OP process => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
 OP callback => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
 OP notify => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
@@ -26,34 +26,54 @@ SVC CallbackService => 404 {"code":"404","type":"Status report","message":"Not F
 SVC BinaService => 404 {"code":"404","type":"Status report","message":"Not Found","
 SVC OnboardingService => 404 {"code":"404","type":"Status report","message":"Not Found","
 SVC MasterDataService => 404 {"code":"404","type":"Status report","message":"Not Found","
-== V13: SWEEP NAMA exp-api ==
-404      exp-api-auth
-404      exp-api-user
-404      exp-api-users
-404      exp-api-onboarding
-404      exp-api-loan
-404      exp-api-master
-404      exp-api-bina
-BLOCKED exp-api-cicilan
-BLOCKED exp-api-portal-loan
-404      exp-api-portal
-404      exp-api-savings
-404      exp-api-deposit
-404      exp-api-account
-404      exp-api-transfer
-404      exp-api-payment
-404      exp-api-qris
-404      exp-api-partner
-404      exp-api-webview
-404      exp-api-customer
-404      exp-api-kyc
-404      exp-api-eform
-404      exp-api-digital
-404      exp-api-bankina
-404      exp-api-ina
-404      exp-api-bni
-404      exp-api-callback
-404      exp-api-workflow
-404      exp-api-mall
-404      exp-api-financing
-404      exp-api-syariah
+== V14: SEMUA PATH API BANK (cek mana yang tidak blocked) ==
+BLOCKED /exp-api-portal-loan/1.0/master/config => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/master/config => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/master/marital-status => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/master/marital-status => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/master/province => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/master/province => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/master/religion => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/master/religion => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/master/privacy-and-policy => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/master/privacy-and-policy => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/master/terms-and-condition => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/master/terms-and-condition => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/onboarding/otp/generate => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/onboarding/otp/generate => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/onboarding/otp/validate => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/onboarding/otp/validate => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/onboarding/user => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/onboarding/user => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/onboarding/user/search => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/onboarding/user/search => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/booking => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/booking => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/booking-status => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/booking-status => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/disburse => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/disburse => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/initiate-booking => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/initiate-booking => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/limit => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/limit => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/loan-booking => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/loan-booking => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/loan-limits => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/loan-limits => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/loan-preview => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/loan-preview => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/loan-tenor => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/loan-tenor => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/eligibility-check => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/eligibility-check => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/bill-inquiry => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/bill-inquiry => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/loan/partner/config => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/loan/partner/config => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/installment/booking => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/installment/booking => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/installment/limit => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/installment/limit => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-portal-loan/1.0/cicilan/dashboard => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
+BLOCKED /exp-api-cicilan/1.0/cicilan/dashboard => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please t
