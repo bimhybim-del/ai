@@ -88,3 +88,26 @@ for op in ["process", "callback", "notify", "handleResponse", "onEvent", "update
 for svc in ["LoanService", "CicilanService", "WorkflowService", "CallbackService", "BinaService", "OnboardingService", "MasterDataService"]:
     s, b = req("GET", "https://apigw-prod.bankina.id/services/" + svc, {"User-Agent": "Mozilla/5.0"})
     print("SVC " + svc + " => " + str(s) + " " + b[:60])
+print("== V11: resumeEvent + echo ops ==")
+def soap2(host, service, action, body):
+    r = urllib.request.Request("https://" + host + "/services/" + service, data=body.encode(), method="POST",
+        headers={"Content-Type": "text/xml;charset=UTF-8", "SOAPAction": chr(34)+action+chr(34), "User-Agent": "Mozilla/5.0"})
+    try:
+        resp = urllib.request.urlopen(r, timeout=30, context=ctx)
+        return resp.status, resp.read()[:900].decode("utf-8", "ignore")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read()[:900].decode("utf-8", "ignore")
+    except Exception as e:
+        return "ERR", str(e)[:120]
+
+RE = '<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:cb="http://callback.workflow.apimgt.carbon.wso2.org"><soapenv:Body><cb:resumeEvent><cb:workflowReference>{ref}</cb:workflowReference><cb:status>{status}</cb:status><cb:description>osint</cb:description></cb:resumeEvent></soapenv:Body></soapenv:Envelope>'
+
+for ref in ["test-ref-123", "123e4567-e89b-12d3-a456-426614174000", "1", "subscription-approval-test"]:
+    for status in ["APPROVED", "REJECTED"]:
+        s, b = soap2("apigw-prod.bankina.id", "WorkflowCallbackService", "urn:resumeEvent", RE.format(ref=ref, status=status))
+        print("RE [" + ref + "][" + status + "] => " + str(s) + " " + b[:250].replace("\n"," "))
+
+# echo ops
+ECH = '<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ax="http://ws.apache.org/axis2"><soapenv:Body><ax:echoString><text>hello</text></ax:echoString></soapenv:Body></soapenv:Envelope>'
+s, b = soap2("apigw-prod.bankina.id", "echo", "urn:echoString", ECH)
+print("ECHO => " + str(s) + " " + b[:300].replace("\n"," "))
