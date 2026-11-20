@@ -1,0 +1,57 @@
+name: sentinel
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sentinel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check apigw
+        run: |
+          python3 - <<'PYEOF'
+          import hmac, hashlib, json, datetime, urllib.request, ssl
+          SECRET = "XO8V9VcN08JpAw9QXBpYUlQFmxILm4Cb"
+          ctx = ssl.create_default_context(); ctx.check_hostname=False; ctx.verify_mode=ssl.CERT_NONE
+          now = datetime.datetime.now(datetime.timezone.utc)
+          ts = now.strftime('%Y-%m-%dT%H:%M:%S.') + f"{now.microsecond//1000:03d}" + 'Z'
+          path = "/exp-api-cicilan/1.0/"
+          msg = f"GET:{path}:{hashlib.sha256(b'').hexdigest()}:{ts}"
+          sig = hmac.new(SECRET.encode(), msg.encode(), hashlib.sha256).hexdigest()
+          r = urllib.request.Request("https://apigw-prod.bankina.id" + path, headers={"X-SIGNATURE": sig, "X-TIMESTAMP": ts, "X-PLATFORM": "WEBVIEW", "X-PARTNER-ID": "payuung", "User-Agent": "Mozilla/5.0"})
+          try:
+              resp = urllib.request.urlopen(r, timeout=20, context=ctx)
+              status, body = resp.status, resp.read()[:300].decode('utf-8','ignore')
+          except urllib.error.HTTPError as e:
+              status, body = e.code, e.read()[:300].decode('utf-8','ignore')
+          print("apigw:", status, body[:120])
+          if status != 503:
+              open('API_UNBLOCKED.txt','w').write(f"{ts} | status={status} | body={body}\n")
+          PYEOF
+      - name: Commit flag jika unblocked
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f API_UNBLOCKED.txt ]; then
+            python3 - <<'PYEOF'
+            import base64, pathlib, os, urllib.request, json
+            content = pathlib.Path('API_UNBLOCKED.txt').read_bytes()
+            payload = {"message": "API UNBLOCKED", "content": base64.b64encode(content).decode()}
+            token = os.environ["GITHUB_TOKEN"]
+            sha = None
+            try:
+                req0 = urllib.request.Request("https://api.github.com/repos/bimhybim-del/ai/contents/API_UNBLOCKED.txt", headers={"Authorization": "Bearer " + token, "X-GitHub-Api-Version": "2022-11-28"})
+                sha = json.loads(urllib.request.urlopen(req0, timeout=20).read().decode()).get("sha")
+            except urllib.error.HTTPError:
+                pass
+            if sha: payload["sha"] = sha
+            req = urllib.request.Request("https://api.github.com/repos/bimhybim-del/ai/contents/API_UNBLOCKED.txt", data=json.dumps(payload).encode(), method="PUT", headers={"Authorization": "Bearer " + token, "Content-Type": "application/json", "X-GitHub-Api-Version": "2022-11-28"})
+            resp = urllib.request.urlopen(req, timeout=30)
+            print("flag committed:", resp.status)
+            PYEOF
+          else
+            echo "masih blocked"
+          fi
