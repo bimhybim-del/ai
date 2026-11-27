@@ -1,0 +1,5 @@
+{"custom_id":"req-1","method":"POST","url":"/v1/chat/completions","body":{"model":"deepseek-v3","messages":[{"role":"user","content":"1+1=?"}]}}
+{"custom_id":"req-2","method":"POST","url":"/v1/chat/completions","body":{"model":"deepseek-v3","messages":[{"role":"user","content":"2+2=?"}]}}
+{"custom_id":"req-3","method":"POST","url":"/v1/chat/completions","body":{"model":"deepseek-v3","messages":[{"role":"user","content":"3+3=?"}]}}
+{"custom_id":"req-4","method":"POST","url":"/v1/chat/completions","body":{"model":"deepseek-v3","messages":[{"role":"user","content":"4+4=?"}]}}
+{"custom_id":"req-5","method":"POST","url":"/v1/chat/completions","body":{"model":"deepseek-v3","messages":[{"role":"user","content":"5+5=?"}]}}
